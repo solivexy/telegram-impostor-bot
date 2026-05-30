@@ -1,8 +1,22 @@
-import { isGroupChat, isPrivateChat } from "../utils/validators.js";
-import { safeSendMessage } from "../utils/telegram.js";
+import { isGroupChat, isPrivateChat, parseCommandText } from "../utils/validators.js";
+import { isGroupAdmin, safeSendMessage } from "../utils/telegram.js";
+import { showSettingsMenu } from "./settings.js";
 
 export async function startCommand(bot, msg) {
   if (isPrivateChat(msg)) {
+    const args = parseCommandText(msg.text || "", "start");
+    if (args.startsWith("settings_")) {
+      const groupId = Number(args.replace("settings_", ""));
+      if (Number.isSafeInteger(groupId)) {
+        const isAdmin = await isGroupAdmin(bot, groupId, msg.from.id);
+        if (isAdmin) {
+          return showSettingsMenu(bot, msg.chat.id, groupId);
+        } else {
+          return safeSendMessage(bot, msg.chat.id, "You are not an admin of that group\\.");
+        }
+      }
+    }
+
     return safeSendMessage(
       bot,
       msg.chat.id,

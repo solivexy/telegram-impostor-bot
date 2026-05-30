@@ -35,7 +35,7 @@ export function createBot() {
   onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
-  onCommand(bot, botIdentity, "settings", (msg) => settingsCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "settings", (msg) => settingsCommand(bot, msg, botIdentity.username), { exact: true });
   onCommand(bot, botIdentity, "set", (msg) => setCommand(bot, msg));
   onCommand(bot, botIdentity, "extendtime", (msg) => extendTimeCommand(bot, msg));
   onCommand(bot, botIdentity, "extend", (msg) => extendTimeCommand(bot, msg));

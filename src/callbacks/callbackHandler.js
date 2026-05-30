@@ -1,14 +1,51 @@
 import { Game } from "../models/Game.js";
-import { getGameByCode } from "../game/stateManager.js";
+import { getGameByCode, getOrCreateSettings } from "../game/stateManager.js";
 import { cancelGame, joinGame, leaveGame, startGame, submitVote } from "../game/gameManager.js";
-import { isGroupAdmin, safeAnswerCallback } from "../utils/telegram.js";
+import { isGroupAdmin, safeAnswerCallback, safeEditMessage } from "../utils/telegram.js";
 import { showHistoryPage } from "../commands/history.js";
+import { getSettingsMenu } from "../commands/settings.js";
 
 export async function handleCallback(bot, query) {
   const data = query.data || "";
   const parts = data.split(":");
   const action = parts[0];
-  const gameCode = parts[1];
+  const gameCode = parts[1]; // Or groupId for set
+
+  if (action === "ignore") {
+    return safeAnswerCallback(bot, query.id, "");
+  }
+
+  if (action === "set") {
+    const groupId = Number(parts[1]);
+    const key = parts[2];
+    const val = Number(parts[3]);
+
+    const isAdmin = await isGroupAdmin(bot, groupId, query.from.id);
+    if (!isAdmin) return safeAnswerCallback(bot, query.id, "Not a group admin.");
+
+    const settings = await getOrCreateSettings(groupId);
+    
+    if (key === "minPlayers" && val > settings.maxPlayers) {
+      return safeAnswerCallback(bot, query.id, "Cannot be greater than Max Players.");
+    }
+    if (key === "maxPlayers" && val < settings.minPlayers) {
+      return safeAnswerCallback(bot, query.id, "Cannot be lower than Min Players.");
+    }
+    // Prevent invalid states for min/max players bounds
+    if (key === "minPlayers" && (val < 3 || val > 20)) {
+        return safeAnswerCallback(bot, query.id, "Out of bounds.");
+    }
+    if (key === "maxPlayers" && (val < 3 || val > 20)) {
+        return safeAnswerCallback(bot, query.id, "Out of bounds.");
+    }
+
+    settings[key] = val;
+    await settings.save();
+
+    const { text, opts } = await getSettingsMenu(groupId);
+    await safeEditMessage(bot, query.message.chat.id, query.message.message_id, text, { reply_markup: opts });
+    return safeAnswerCallback(bot, query.id, "Settings updated.");
+  }
 
   if (action === "hist") {
     const page = Number(parts[1]);
