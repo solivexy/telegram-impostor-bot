@@ -364,13 +364,22 @@ export async function finishVoting(bot, game) {
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
+      eliminatedLine
+    );
+
+    // Wait a brief moment for effect
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    await safeSendMessage(
+      bot,
+      freshGame.telegramGroupId,
       `${bold(winner)}\nCongratulations to: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with normal players\\."}`
     );
 
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
-      `${bold("Final result")}\nRound: ${roundNumber}\n${eliminatedLine}\n\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\nVotes:\n${voteLines.join("\n")}`
+      `${bold("Final result")}\nRound: ${roundNumber}\n\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\nVotes:\n${voteLines.join("\n")}`
     );
     return;
   }
@@ -389,7 +398,16 @@ async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, comp
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Round result")}\nRound: ${completedRoundNumber}\n${eliminatedLine}\n\nThe game continues\\. Alive players must describe again in DM\\.\nClue time: ${settings.clueTimeLimit} seconds\\.\n\nVotes:\n${voteLines.join("\n")}`
+    eliminatedLine
+  );
+
+  // Wait a brief moment for effect
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
+  await safeSendMessage(
+    bot,
+    game.telegramGroupId,
+    `${bold("Round result")}\nRound: ${completedRoundNumber}\n\nThe game continues\\. Alive players must describe again in DM\\.\nClue time: ${settings.clueTimeLimit} seconds\\.\n\nVotes:\n${voteLines.join("\n")}`
   );
   await promptAlivePlayersForClues(bot, game);
 }
