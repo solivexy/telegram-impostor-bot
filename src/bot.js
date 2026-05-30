@@ -11,6 +11,7 @@ import { voteCommand } from "./commands/vote.js";
 import { smiteCommand } from "./commands/smite.js";
 import { statusCommand } from "./commands/status.js";
 import { statsCommand } from "./commands/stats.js";
+import { nextGameCommand } from "./commands/nextgame.js";
 import { settingsCommand, setCommand } from "./commands/settings.js";
 import { cancelGameCommand, endGameCommand, killGameCommand } from "./commands/endgame.js";
 import { extendTimeCommand } from "./commands/extendtime.js";
@@ -35,6 +36,7 @@ export function createBot() {
   onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "nextgame", (msg) => nextGameCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "settings", (msg) => settingsCommand(bot, msg, botIdentity.username), { exact: true });
   onCommand(bot, botIdentity, "set", (msg) => setCommand(bot, msg));
   onCommand(bot, botIdentity, "extendtime", (msg) => extendTimeCommand(bot, msg));
@@ -101,6 +103,7 @@ function registerBotCommands(bot) {
     { command: "vote", description: "Vote for a player" },
     { command: "status", description: "Show the current game state" },
     { command: "stats", description: "Show player stats" },
+    { command: "nextgame", description: "Notify you when the next lobby opens" },
     { command: "settings", description: "Show group settings" },
     { command: "set", description: "Admin-only setting change" },
     { command: "extendtime", description: "Extend the active timer" },

@@ -4,6 +4,7 @@ import { Clue } from "../models/Clue.js";
 import { Vote } from "../models/Vote.js";
 import { Group } from "../models/Group.js";
 import { UserStat } from "../models/UserStat.js";
+import { NextGameSubscription } from "../models/NextGameSubscription.js";
 import { pickWordAssignment, chooseImpostors } from "./wordManager.js";
 import { getOrCreateGroup, getOrCreateSettings, getActiveGame, clearActiveGame, generateGameCode } from "./stateManager.js";
 import { getVoteSummary } from "./voteManager.js";
@@ -42,6 +43,8 @@ export async function createNewGame(bot, msg) {
     game.lobbyMessageId = sent.message_id;
     await game.save();
   }
+
+  await notifyNextGameSubscribers(bot, game);
 }
 
 export async function joinGame(bot, game, user) {
@@ -220,7 +223,7 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
   }
 
   const normalizedClue = normalizeClue(clueText);
-  const usedClues = await Clue.find({ gameId: game._id }).select("userId clue");
+  const usedClues = await Clue.find({ gameId: game._id, roundNumber }).select("userId clue");
   const duplicate = usedClues.find((clue) => {
     if (existing && clue.userId === user.id && clue._id.equals(existing._id)) return false;
     return normalizeClue(clue.clue) === normalizedClue;
@@ -615,6 +618,28 @@ async function updateGameStats(game, players, winningRole) {
       { userId: player.userId },
       update,
       { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+}
+
+async function notifyNextGameSubscribers(bot, game) {
+  const subscriptions = await NextGameSubscription.find({ telegramGroupId: game.telegramGroupId }).sort({ createdAt: 1 });
+  if (subscriptions.length === 0) return;
+
+  await NextGameSubscription.deleteMany({ telegramGroupId: game.telegramGroupId });
+
+  const names = subscriptions.map((subscription) => mentionPlayer(subscription)).join(", ");
+  await safeSendMessage(
+    bot,
+    game.telegramGroupId,
+    `${bold("Next game is ready")}\n${names}\nUse /join to enter the lobby\\.`
+  );
+
+  for (const subscription of subscriptions) {
+    await safeSendMessage(
+      bot,
+      subscription.userId,
+      `A new Who's Impostor lobby is open\\. Join in the group now\\.\nGame code: ${escapeMarkdown(game.gameCode)}`
     );
   }
 }

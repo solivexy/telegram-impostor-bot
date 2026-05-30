@@ -17,6 +17,8 @@ export async function statsCommand(bot, msg) {
   const winRate = stat.gamesPlayed > 0 ? Math.round((stat.wins / stat.gamesPlayed) * 100) : 0;
   const normalWinRate = stat.normalGames > 0 ? Math.round((stat.normalWins / stat.normalGames) * 100) : 0;
   const impostorWinRate = stat.impostorGames > 0 ? Math.round((stat.impostorWins / stat.impostorGames) * 100) : 0;
+  const diedRate = stat.gamesPlayed > 0 ? Math.round((stat.timesEliminated / stat.gamesPlayed) * 100) : 0;
+  const surviveRate = stat.gamesPlayed > 0 ? Math.max(0, 100 - diedRate) : 0;
 
   const contextLine = isGroupChat(msg) ? "Reply to someone with /stats to see their stats\\." : "";
   const lines = [
@@ -28,6 +30,8 @@ export async function statsCommand(bot, msg) {
     `Normal: ${stat.normalWins}/${stat.normalGames} wins \\(${normalWinRate}%\\)`,
     `Impostor: ${stat.impostorWins}/${stat.impostorGames} wins \\(${impostorWinRate}%\\)`,
     `Eliminated: ${stat.timesEliminated}`,
+    `Survive rate: ${surviveRate}%`,
+    `Died rate: ${diedRate}%`,
     `Votes cast: ${stat.totalVotesCast}`
   ];
 

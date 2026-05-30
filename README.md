@@ -70,6 +70,7 @@ Never commit your real bot token.
 - `/vote` - Votes during the voting phase via inline buttons or by typing a name.
 - `/status` - Shows the current lobby or game state.
 - `/stats` - Shows your player stats. Reply to a user with `/stats` to view their stats.
+- `/nextgame` - Subscribes you to be notified when the next lobby opens in this group.
 - `/settings` - Shows group settings.
 - `/set key value` - Changes a setting. Admin-only.
 - `/extendtime seconds` - Extends the active lobby, clue, or vote timer. Creator or admin only. `/extend seconds` also works.
