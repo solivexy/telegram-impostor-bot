@@ -1,0 +1,17 @@
+{
+  "name": "telegram-impostor-bot",
+  "version": "1.0.0",
+  "description": "Who's Impostor? Telegram group party game bot built with Bun, MongoDB, and node-telegram-bot-api.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "bun src/index.js",
+    "dev": "bun --watch src/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "mongoose": "^8.9.5",
+    "node-telegram-bot-api": "^0.66.0",
+    "sharp": "^0.34.5"
+  }
+}
