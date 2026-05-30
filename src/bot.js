@@ -8,6 +8,7 @@ import { startGameCommand } from "./commands/startgame.js";
 import { describeCommand, directDescribeMessage } from "./commands/describe.js";
 import { historyCommand } from "./commands/history.js";
 import { voteCommand } from "./commands/vote.js";
+import { smiteCommand } from "./commands/smite.js";
 import { statusCommand } from "./commands/status.js";
 import { statsCommand } from "./commands/stats.js";
 import { settingsCommand, setCommand } from "./commands/settings.js";
@@ -31,6 +32,7 @@ export function createBot() {
   onCommand(bot, botIdentity, "describe", (msg) => describeCommand(bot, msg));
   onCommand(bot, botIdentity, "history", (msg) => historyCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "vote", (msg) => voteCommand(bot, msg));
+  onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "settings", (msg) => settingsCommand(bot, msg), { exact: true });

@@ -5,8 +5,8 @@ dotenv.config();
 export const config = {
   botToken: process.env.BOT_TOKEN,
   mongodbUri: process.env.MONGODB_URI,
-  defaultClueTimeLimit: 180,
-  defaultVoteTimeLimit: 120,
+  defaultClueTimeLimit: 90,
+  defaultVoteTimeLimit: 90,
   defaultLobbyTimeLimit: 60,
   defaultMaxPlayers: 12,
   defaultMinPlayers: 4,

@@ -632,3 +632,47 @@ export function playerFromUser(game, user) {
     hasReceivedDm: false
   };
 }
+
+export async function handleSmite(bot, game, target) {
+  await Player.updateOne({ _id: target._id }, { $set: { isAlive: false } });
+  const freshGame = await Game.findById(game._id);
+  const players = await Player.find({ gameId: freshGame._id }).sort({ joinedAt: 1 });
+  const impostors = players.filter((player) => player.role === "impostor");
+  const alivePlayers = players.filter((player) => player.isAlive);
+  const aliveImpostors = alivePlayers.filter((player) => player.role === "impostor");
+  const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
+
+  const eliminatedLine = `⚡ ${mentionPlayer(target)} was SMITED by an admin\\! They were ${target.role === "impostor" ? "An Impostor" : "not An Impostor"}\\. ${aliveImpostors.length} Impostor${aliveImpostors.length === 1 ? "" : "s"} remain${aliveImpostors.length === 1 ? "s" : ""}\\.`;
+  await safeSendMessage(bot, freshGame.telegramGroupId, eliminatedLine);
+
+  const normalsWin = impostors.length > 0 && aliveImpostors.length === 0;
+  const impostorsWin = aliveImpostors.length > 0 && aliveImpostors.length >= aliveNormals.length;
+
+  if (normalsWin || impostorsWin) {
+    freshGame.state = "finished";
+    freshGame.finishedAt = new Date();
+    freshGame.voteDeadline = null;
+    await freshGame.save();
+    await clearActiveGame(freshGame);
+
+    const winner = normalsWin ? "Normal players win!" : "Impostors win!";
+    const winningRole = normalsWin ? "normal" : "impostor";
+    const winningPlayers = players.filter((player) => player.role === winningRole);
+    const winnerNames = winningPlayers.map((player) => mentionPlayer(player)).join(", ");
+    await updateGameStats(freshGame, players, winningRole);
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold(winner)}\nCongratulations to: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with normal players\\."}`);
+    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold("Final result")}\n\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}`);
+    return;
+  }
+
+  // Not finished, force advance if needed
+  if (freshGame.state === "describing") {
+    const clueCount = await Clue.countDocuments({ gameId: freshGame._id, roundNumber: freshGame.roundNumber || 1 });
+    if (clueCount >= alivePlayers.length) await startVoting(bot, freshGame);
+  } else if (freshGame.state === "voting") {
+    const voteCount = await Vote.countDocuments({ gameId: freshGame._id, roundNumber: freshGame.roundNumber || 1 });
+    if (voteCount >= alivePlayers.length) await finishVoting(bot, freshGame);
+  }
+}
