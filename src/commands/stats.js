@@ -22,17 +22,17 @@ export async function statsCommand(bot, msg) {
 
   const contextLine = isGroupChat(msg) ? "Reply to someone with /stats to see their stats\\." : "";
   const lines = [
-    `${bold("Player stats")}: ${escapeMarkdown(playerDisplayName(stat))}`,
-    `Games: ${stat.gamesPlayed}`,
-    `Wins: ${stat.wins}`,
-    `Losses: ${stat.losses}`,
-    `Win rate: ${winRate}%`,
-    `Normal: ${stat.normalWins}/${stat.normalGames} wins \\(${normalWinRate}%\\)`,
-    `Impostor: ${stat.impostorWins}/${stat.impostorGames} wins \\(${impostorWinRate}%\\)`,
-    `Eliminated: ${stat.timesEliminated}`,
-    `Survive rate: ${surviveRate}%`,
-    `Died rate: ${diedRate}%`,
-    `Votes cast: ${stat.totalVotesCast}`
+    `📊 ${bold("Player stats")}: ${escapeMarkdown(playerDisplayName(stat))}`,
+    `🎮 Games: ${stat.gamesPlayed}`,
+    `🏆 Wins: ${stat.wins}`,
+    `💔 Losses: ${stat.losses}`,
+    `📈 Win rate: ${winRate}%`,
+    `🙂 Normal: ${stat.normalWins}/${stat.normalGames} wins \\(${normalWinRate}%\\)`,
+    `🕵️ Impostor: ${stat.impostorWins}/${stat.impostorGames} wins \\(${impostorWinRate}%\\)`,
+    `☠️ Eliminated: ${stat.timesEliminated}`,
+    `🛡️ Survive rate: ${surviveRate}%`,
+    `💀 Died rate: ${diedRate}%`,
+    `🗳️ Votes cast: ${stat.totalVotesCast}`
   ];
 
   if (contextLine) lines.push("", contextLine);
