@@ -25,7 +25,7 @@ export async function settingsCommand(bot, msg, botUsername) {
 
 export async function getSettingsMenu(groupChatId) {
   const settings = await getOrCreateSettings(groupChatId);
-  const text = bold("⚙️ Game Settings") + `\\n\\nConfigure settings for group ID: ${groupChatId}`;
+  const text = bold("⚙️ Game Settings") + `\\n\\nConfigure settings for group ID: ${escapeMarkdown(String(groupChatId))}`;
 
   const opts = {
     inline_keyboard: [
