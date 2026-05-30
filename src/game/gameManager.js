@@ -628,13 +628,6 @@ async function notifyNextGameSubscribers(bot, game) {
 
   await NextGameSubscription.deleteMany({ telegramGroupId: game.telegramGroupId });
 
-  const names = subscriptions.map((subscription) => mentionPlayer(subscription)).join(", ");
-  await safeSendMessage(
-    bot,
-    game.telegramGroupId,
-    `${bold("Next game is ready")}\n${names}\nUse /join to enter the lobby\\.`
-  );
-
   for (const subscription of subscriptions) {
     await safeSendMessage(
       bot,

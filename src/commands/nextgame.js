@@ -14,6 +14,15 @@ export async function nextGameCommand(bot, msg) {
     return safeSendMessage(bot, msg.chat.id, "A lobby is already open\\. Use /join to play now\\.");
   }
 
+  const dmReady = await safeSendMessage(
+    bot,
+    msg.from.id,
+    "You are subscribed for the next Who's Impostor lobby in this group\\."
+  );
+  if (!dmReady) {
+    return safeSendMessage(bot, msg.chat.id, "Open a private chat with me and send /start first\\. Then use /nextgame again\\.");
+  }
+
   await NextGameSubscription.updateOne(
     { telegramGroupId: msg.chat.id, userId: msg.from.id },
     {
@@ -28,6 +37,6 @@ export async function nextGameCommand(bot, msg) {
   return safeSendMessage(
     bot,
     msg.chat.id,
-    `${escapeMarkdown(userName(msg.from))}, I will notify you when the next lobby opens\\.`
+    `${escapeMarkdown(userName(msg.from))}, I will notify you by DM when the next lobby opens\\.`
   );
 }
