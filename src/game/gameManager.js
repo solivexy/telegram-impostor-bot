@@ -15,7 +15,7 @@ import { checkDmEnabled, lobbyKeyboard, mentionPlayer, playerName, safeEditMessa
 
 export async function createNewGame(bot, msg) {
   const existing = await getActiveGame(msg.chat.id);
-  if (existing) return safeSendMessage(bot, msg.chat.id, "A game is already active in this group\\.");
+  if (existing) return safeSendMessage(bot, msg.chat.id, "A game is already running here\\. Use /status to see where it is\\.");
 
   const group = await getOrCreateGroup(msg.chat);
   const settings = await getOrCreateSettings(msg.chat.id);
@@ -55,11 +55,11 @@ export async function joinGame(bot, game, user) {
   if (existing) return "You already joined this game.";
 
   const count = await Player.countDocuments({ gameId: game._id });
-  if (count >= settings.maxPlayers) return `This lobby is full. Max players: ${settings.maxPlayers}.`;
+  if (count >= settings.maxPlayers) return `Lobby is full. Max players: ${settings.maxPlayers}.`;
 
   const dmReady = await checkDmEnabled(bot, user.id);
   if (!dmReady) {
-    return "Open a private chat with me and send /start first. Then press Join Game again.";
+    return "Open my DM and send /start first. Then press Join again.";
   }
 
   try {
@@ -70,7 +70,7 @@ export async function joinGame(bot, game, user) {
   }
 
   await refreshLobbyMessage(bot, game);
-  return "Joined the game.";
+  return "You are in.";
 }
 
 export async function leaveGame(bot, game, user) {
@@ -95,7 +95,7 @@ export async function leaveGame(bot, game, user) {
   }
 
   await refreshLobbyMessage(bot, game);
-  return "Left the game.";
+  return "You left the lobby.";
 }
 
 export async function cancelGame(bot, game) {
@@ -127,11 +127,11 @@ export async function startGame(bot, game, isAutoStart = false) {
       game.finishedAt = new Date();
       await game.save();
       await clearActiveGame(game);
-      await safeSendMessage(bot, game.telegramGroupId, `Game cancelled because there are not enough players \\(need at least ${settings.minPlayers}\\)\\.`);
+      await safeSendMessage(bot, game.telegramGroupId, `Game cancelled: not enough players \\(need ${settings.minPlayers}\\)\\.`);
     } else {
       game.state = "lobby";
       await game.save();
-      await safeSendMessage(bot, game.telegramGroupId, `Need at least ${settings.minPlayers} players to start\\.`);
+      await safeSendMessage(bot, game.telegramGroupId, `Need ${settings.minPlayers} players to start\\.`);
     }
     return false;
   }
@@ -155,7 +155,7 @@ export async function startGame(bot, game, isAutoStart = false) {
     await safeSendMessage(
       bot,
       game.telegramGroupId,
-      `Cannot start yet\\. These players must open a private chat with me and send /start: ${names}`
+      `Cannot start yet\\. These players need to DM me and send /start: ${names}`
     );
     return false;
   }
@@ -188,7 +188,7 @@ export async function startGame(bot, game, isAutoStart = false) {
     const sent = await safeSendMessage(
       bot,
       player.userId,
-      `Your secret word: ${bold(player.secretWord)}\nJust reply here with your clue directly\\. Do not say the exact word\\.`
+      `${bold("Your word")}: ${bold(player.secretWord)}\nReply with one clue\\. Do not use the exact word\\.`
     );
     if (!sent) {
       game.state = "lobby";
@@ -209,7 +209,7 @@ export async function startGame(bot, game, isAutoStart = false) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `Words sent\\. Check your DM to see your word and reply with your clue\\.\nClue time: ${settings.clueTimeLimit} seconds\\.`
+    `${bold("Clue round started")}\nWords are in DM\\. Reply there with one clue\\.\nTime: ${formatSeconds(settings.clueTimeLimit)}\\.`
   );
   return true;
 }
@@ -255,7 +255,7 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
   const clueCount = await Clue.countDocuments({ gameId: game._id, roundNumber });
 
   if (privateSubmit) {
-    await safeSendMessage(bot, feedbackChatId, `Clue saved\\. Progress: ${clueCount}/${aliveCount}\\.`);
+    await safeSendMessage(bot, feedbackChatId, `Clue saved\\. ${clueCount}/${aliveCount} submitted\\.`);
   }
   await sendClueProgress(bot, game);
   if (clueCount >= aliveCount) await startVoting(bot, game);
@@ -287,7 +287,7 @@ export async function extendActiveTimer(bot, game, seconds) {
   game[field] = new Date(Math.max(currentDeadline, now) + seconds * 1000);
   await game.save();
 
-  return safeSendMessage(bot, game.telegramGroupId, `${label} timer extended by ${seconds} seconds\\.`);
+  return safeSendMessage(bot, game.telegramGroupId, `${label} timer extended by ${formatSeconds(seconds)}\\.`);
 }
 
 export async function startVoting(bot, game) {
@@ -358,7 +358,7 @@ export async function finishVoting(bot, game) {
   const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
   
   const eliminatedLine = eliminated
-    ? `${mentionPlayer(eliminated)} was ${eliminated.role === "impostor" ? "An Impostor" : "not An Impostor"}\\. ${aliveImpostors.length} Impostor${aliveImpostors.length === 1 ? "" : "s"} remain${aliveImpostors.length === 1 ? "s" : ""}\\.`
+    ? `${mentionPlayer(eliminated)} was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
     : "No one was ejected \\(Tie\\)\\.";
 
   const normalsWin = impostors.length > 0 && aliveImpostors.length === 0;
@@ -371,7 +371,7 @@ export async function finishVoting(bot, game) {
     await freshGame.save();
     await clearActiveGame(freshGame);
 
-    const winner = normalsWin ? "Normal players win!" : "Impostors win!";
+    const winner = normalsWin ? "Crew wins!" : "Impostors win!";
     const winningRole = normalsWin ? "normal" : "impostor";
     const winningPlayers = players.filter((player) => player.role === winningRole);
     const winnerNames = winningPlayers.map((player) => mentionPlayer(player)).join(", ");
@@ -389,13 +389,13 @@ export async function finishVoting(bot, game) {
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
-      `${bold(winner)}\nCongratulations to: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with normal players\\."}`
+      `${bold(winner)}\nWinners: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with the crew\\."}`
     );
 
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
-      `${bold("Final result")}\nRound: ${roundNumber}\n\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\nVotes:\n${voteLines.join("\n")}`
+      `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${voteLines.join("\n")}`
     );
     return;
   }
@@ -423,7 +423,7 @@ async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, comp
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Round result")}\nRound: ${completedRoundNumber}\n\nThe game continues\\. Alive players must describe again in DM\\.\nClue time: ${settings.clueTimeLimit} seconds\\.\n\nVotes:\n${voteLines.join("\n")}`
+    `${bold("Round result")}\nRound: ${completedRoundNumber}\nThe game continues\\. Alive players get a fresh clue prompt in DM\\.\nTime: ${formatSeconds(settings.clueTimeLimit)}\\.\n\n${bold("Votes")}\n${voteLines.join("\n")}`
   );
   await promptAlivePlayersForClues(bot, game);
 }
@@ -434,7 +434,7 @@ async function promptAlivePlayersForClues(bot, game) {
     await safeSendMessage(
       bot,
       player.userId,
-      `${bold("Round")} ${game.roundNumber}\nSend a new clue for your word here\\. Do not say the exact word\\.`
+      `${bold(`Round ${game.roundNumber}`)}\nSend one new clue for your word\\. Do not use the exact word\\.`
     );
   }
 }
@@ -460,15 +460,15 @@ export async function renderStatus(game) {
   const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
   const lines = players.map((player) => `• ${mentionPlayer(player)}${player.isAlive ? "" : " \\(out\\)"}`);
   const deadline = activeDeadline(game);
-  const timerLine = deadline ? `\nTimer: ${secondsUntil(deadline)} seconds remaining` : "";
-  return `${bold("Game status")}\nState: ${escapeMarkdown(game.state)}${timerLine}\nPlayers: ${players.length}\n${lines.join("\n") || "No players yet\\."}`;
+  const timerLine = deadline ? `\nTimer: ${formatSeconds(secondsUntil(deadline))} left` : "";
+  return `${bold("Game status")}\nPhase: ${escapeMarkdown(stateLabel(game.state))}${timerLine}\nPlayers: ${players.length}\n\n${lines.join("\n") || "No players yet\\."}`;
 }
 
 export async function renderLobby(game) {
   const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
   const lines = players.map((player, index) => `${index + 1}\\. ${mentionPlayer(player)}${player.userId === game.creatorId ? " \\(creator\\)" : ""}`);
-  const timerLine = game.lobbyDeadline ? `\nAutostart: ${secondsUntil(game.lobbyDeadline)} seconds` : "";
-  return `${bold("Who's Impostor?")}\nGame code: ${escapeMarkdown(game.gameCode)}\nPlayers: ${players.length}${timerLine}\n\n${lines.join("\n") || "No players yet\\."}\n\nJoin the lobby, then start when everyone is ready\\.`;
+  const timerLine = game.lobbyDeadline ? `\nStarts in: ${formatSeconds(secondsUntil(game.lobbyDeadline))}` : "";
+  return `${bold("Who's Impostor?")}\nCode: ${escapeMarkdown(game.gameCode)}\nPlayers: ${players.length}${timerLine}\n\n${lines.join("\n") || "No players yet\\."}\n\nJoin if you are playing\\. The creator or an admin can start early\\.`;
 }
 
 export async function refreshLobbyMessage(bot, game) {
@@ -481,7 +481,8 @@ export async function refreshLobbyMessage(bot, game) {
 
 async function sendVotePrompt(bot, game) {
   const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
-  await safeSendMessage(bot, game.telegramGroupId, `${bold("Vote now")}\nRound: ${game.roundNumber || 1}`, {
+  const settings = await getOrCreateSettings(game.telegramGroupId);
+  await safeSendMessage(bot, game.telegramGroupId, `${bold("Vote now")}\nRound: ${game.roundNumber || 1}\nPick the player who seems off\\. Time: ${formatSeconds(settings.voteTimeLimit)}\\.`, {
     reply_markup: voteKeyboard(game.gameCode, alivePlayers)
   });
 }
@@ -503,7 +504,7 @@ async function sendVoteProgress(bot, game) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Vote progress")}\nVoted: ${voted.length}/${alivePlayers.length}\nAlready voted: ${votedLine}\nWaiting for: ${pendingLine}`
+    `${bold("Vote progress")}: ${voted.length}/${alivePlayers.length}\nDone: ${votedLine}\nWaiting: ${pendingLine}`
   );
 }
 
@@ -524,7 +525,7 @@ async function sendClueProgress(bot, game) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Clue progress")}\nSubmitted: ${submitted.length}/${alivePlayers.length}\nAlready described: ${submittedLine}\nWaiting for: ${pendingLine}`
+    `${bold("Clue progress")}: ${submitted.length}/${alivePlayers.length}\nDone: ${submittedLine}\nWaiting: ${pendingLine}`
   );
 }
 
@@ -540,7 +541,7 @@ async function sendClueReveal(bot, game, alivePlayers, clueByUser) {
     let sentAny = false;
     for (let index = 0; index < images.length; index += 1) {
       const caption = index === images.length - 1
-        ? `${bold("Clues")}\nVote for the impostor\\.`
+        ? `${bold("Clues")}\nNow vote for the impostor\\.`
         : `${bold("Clues")}\nPage ${index + 1}/${images.length}`;
       const sent = await safeSendPhoto(bot, game.telegramGroupId, images[index], { caption });
       sentAny = Boolean(sent) || sentAny;
@@ -553,7 +554,7 @@ async function sendClueReveal(bot, game, alivePlayers, clueByUser) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Clues")}\n${clueLines.join("\n")}\n\nVote for the impostor using the buttons below\\.`
+    `${bold("Clues")}\n${clueLines.join("\n")}\n\nNow vote for the impostor using the buttons below\\.`
   );
 }
 
@@ -588,6 +589,27 @@ function activeDeadline(game) {
 
 function secondsUntil(date) {
   return Math.max(0, Math.ceil((new Date(date).getTime() - Date.now()) / 1000));
+}
+
+function formatSeconds(seconds) {
+  if (seconds < 60) return `${seconds} seconds`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  if (remainder === 0) return `${minutes} min`;
+  return `${minutes} min ${remainder} sec`;
+}
+
+function stateLabel(state) {
+  const labels = {
+    lobby: "Lobby",
+    starting: "Starting",
+    assigning_words: "Sending words",
+    describing: "Clues",
+    voting: "Voting",
+    finished: "Finished",
+    cancelled: "Cancelled"
+  };
+  return labels[state] || state;
 }
 
 function normalizeClue(clue) {
@@ -673,7 +695,7 @@ export async function handleSmite(bot, game, target) {
   const aliveImpostors = alivePlayers.filter((player) => player.role === "impostor");
   const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
 
-  const eliminatedLine = `⚡ ${mentionPlayer(target)} was SMITED by an admin\\! They were ${target.role === "impostor" ? "An Impostor" : "not An Impostor"}\\. ${aliveImpostors.length} Impostor${aliveImpostors.length === 1 ? "" : "s"} remain${aliveImpostors.length === 1 ? "s" : ""}\\.`;
+  const eliminatedLine = `⚡ ${mentionPlayer(target)} was removed by an admin\\. They were ${target.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`;
   await safeSendMessage(bot, freshGame.telegramGroupId, eliminatedLine);
 
   const normalsWin = impostors.length > 0 && aliveImpostors.length === 0;
@@ -686,15 +708,15 @@ export async function handleSmite(bot, game, target) {
     await freshGame.save();
     await clearActiveGame(freshGame);
 
-    const winner = normalsWin ? "Normal players win!" : "Impostors win!";
+    const winner = normalsWin ? "Crew wins!" : "Impostors win!";
     const winningRole = normalsWin ? "normal" : "impostor";
     const winningPlayers = players.filter((player) => player.role === winningRole);
     const winnerNames = winningPlayers.map((player) => mentionPlayer(player)).join(", ");
     await updateGameStats(freshGame, players, winningRole);
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold(winner)}\nCongratulations to: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with normal players\\."}`);
-    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold("Final result")}\n\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}`);
+    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold(winner)}\nWinners: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with the crew\\."}`);
+    await safeSendMessage(bot, freshGame.telegramGroupId, `${bold("Final result")}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}`);
     return;
   }
 

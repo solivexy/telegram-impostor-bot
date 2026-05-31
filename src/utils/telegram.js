@@ -134,12 +134,12 @@ export function lobbyKeyboard(gameCode) {
   return {
     inline_keyboard: [
       [
-        { text: "Join Game", callback_data: `join:${gameCode}` },
-        { text: "Leave Game", callback_data: `leave:${gameCode}` }
+        { text: "Join", callback_data: `join:${gameCode}` },
+        { text: "Leave", callback_data: `leave:${gameCode}` }
       ],
       [
-        { text: "Start Game", callback_data: `start:${gameCode}` },
-        { text: "Cancel Game", callback_data: `cancel:${gameCode}` }
+        { text: "Start", callback_data: `start:${gameCode}` },
+        { text: "Cancel", callback_data: `cancel:${gameCode}` }
       ]
     ]
   };
@@ -148,7 +148,7 @@ export function lobbyKeyboard(gameCode) {
 export function voteKeyboard(gameCode, players) {
   return {
     inline_keyboard: players.map((player) => [
-      { text: playerDisplayName(player), callback_data: `vote:${gameCode}:${player.userId}` }
+      { text: `Vote ${playerDisplayName(player)}`, callback_data: `vote:${gameCode}:${player.userId}` }
     ])
   };
 }

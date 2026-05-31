@@ -18,7 +18,7 @@ export async function describeCommand(bot, msg) {
     } catch (error) {
       console.error("Could not delete public describe message:", error.message);
     }
-    return safeSendMessage(bot, msg.chat.id, "Send your clue privately in our DM\\.");
+    return safeSendMessage(bot, msg.chat.id, "Send clues in DM so nobody sees them early\\.");
   }
 
   if (!isPrivateChat(msg)) return;
@@ -58,8 +58,8 @@ export async function resolvePrivateDescribeGame(userId, rawClue) {
     if (codedGame) return { game: codedGame, clue: parts.slice(1).join(" ") };
   }
 
-  if (games.length === 0) return { error: "No active describing game found for you." };
-  if (games.length > 1) return { error: "You are in multiple games. Use /describe GAMECODE your clue." };
+  if (games.length === 0) return { error: "No clue round is waiting for you." };
+  if (games.length > 1) return { error: "You are in multiple clue rounds. Use /describe GAMECODE your clue." };
 
   return { game: games[0], clue: rawClue };
 }

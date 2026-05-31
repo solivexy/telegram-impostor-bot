@@ -20,7 +20,7 @@ export async function startCommand(bot, msg) {
     return safeSendMessage(
       bot,
       msg.chat.id,
-      "You're DM\\-ready for Who's Impostor?\\n\\nAdd me to a Telegram group, then use /newgame there\\. I will send secret words here when a group game starts\\."
+      "DM is ready\\.\\n\\nAdd me to a group and run /newgame there\\. When a game starts, I will send your secret word here\\."
     );
   }
 
@@ -28,7 +28,7 @@ export async function startCommand(bot, msg) {
     return safeSendMessage(
       bot,
       msg.chat.id,
-      "Who's Impostor? is a group word game\\. Start a lobby with /newgame, join it, then describe your secret word without saying it\\. Vote out the impostor to win\\."
+      "Who's Impostor? is ready\\.\\n\\nUse /newgame to open a lobby\\. Players join, get secret words in DM, send clues privately, then vote in the group\\."
     );
   }
 }

@@ -13,24 +13,31 @@ export async function settingsCommand(bot, msg, botUsername) {
 
   const url = `https://t.me/${botUsername}?start=settings_${msg.chat.id}`;
   const kb = {
-    inline_keyboard: [[{ text: "Change Settings", url }]]
+    inline_keyboard: [[{ text: "Open settings", url }]]
   };
 
-  return bot.sendMessage(
+  return safeSendMessage(
+    bot,
     msg.chat.id,
-    "Change the game settings in our private chat\\.",
+    "Settings open in DM so the group chat stays tidy\\.",
     { reply_markup: kb }
-  ).catch(err => console.error("Filter setting msg err:", err));
+  );
 }
 
 export async function getSettingsMenu(groupChatId) {
   const settings = await getOrCreateSettings(groupChatId);
-  const text = bold("⚙️ Game Settings") + `\\n\\nConfigure settings for group ID: ${escapeMarkdown(String(groupChatId))}`;
+  const text = [
+    bold("⚙️ Game settings"),
+    "",
+    `Group: ${escapeMarkdown(String(groupChatId))}`,
+    `Players: ${settings.minPlayers}\\-${settings.maxPlayers}`,
+    `Timers: lobby ${settings.lobbyTimeLimit}s • clue ${settings.clueTimeLimit}s • vote ${settings.voteTimeLimit}s`
+  ].join("\n");
 
   const opts = {
     inline_keyboard: [
       [
-        { text: `Lobby Time: ${settings.lobbyTimeLimit}s`, callback_data: "ignore" }
+        { text: `Lobby: ${settings.lobbyTimeLimit}s`, callback_data: "ignore" }
       ],
       [
         { text: "60s", callback_data: `set:${groupChatId}:lobbyTimeLimit:60` },
@@ -38,7 +45,7 @@ export async function getSettingsMenu(groupChatId) {
         { text: "120s", callback_data: `set:${groupChatId}:lobbyTimeLimit:120` }
       ],
       [
-        { text: `Clue Time: ${settings.clueTimeLimit}s`, callback_data: "ignore" }
+        { text: `Clues: ${settings.clueTimeLimit}s`, callback_data: "ignore" }
       ],
       [
         { text: "60s", callback_data: `set:${groupChatId}:clueTimeLimit:60` },
@@ -46,7 +53,7 @@ export async function getSettingsMenu(groupChatId) {
         { text: "120s", callback_data: `set:${groupChatId}:clueTimeLimit:120` }
       ],
       [
-        { text: `Vote Time: ${settings.voteTimeLimit}s`, callback_data: "ignore" }
+        { text: `Voting: ${settings.voteTimeLimit}s`, callback_data: "ignore" }
       ],
       [
         { text: "60s", callback_data: `set:${groupChatId}:voteTimeLimit:60` },
@@ -54,12 +61,12 @@ export async function getSettingsMenu(groupChatId) {
         { text: "120s", callback_data: `set:${groupChatId}:voteTimeLimit:120` }
       ],
       [
-        { text: `Min Players: ${settings.minPlayers}`, callback_data: `ignore` },
+        { text: `Min: ${settings.minPlayers}`, callback_data: `ignore` },
         { text: "-", callback_data: `set:${groupChatId}:minPlayers:${Math.max(3, settings.minPlayers - 1)}` },
         { text: "+", callback_data: `set:${groupChatId}:minPlayers:${Math.min(settings.maxPlayers, settings.minPlayers + 1)}` }
       ],
       [
-        { text: `Max Players: ${settings.maxPlayers}`, callback_data: `ignore` },
+        { text: `Max: ${settings.maxPlayers}`, callback_data: `ignore` },
         { text: "-", callback_data: `set:${groupChatId}:maxPlayers:${Math.max(settings.minPlayers, settings.maxPlayers - 1)}` },
         { text: "+", callback_data: `set:${groupChatId}:maxPlayers:${Math.min(20, settings.maxPlayers + 1)}` }
       ]
