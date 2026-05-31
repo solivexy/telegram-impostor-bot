@@ -24,6 +24,9 @@ export async function describeCommand(bot, msg) {
   if (!isPrivateChat(msg)) return;
 
   const resolved = await resolvePrivateDescribeGame(msg.from.id, clue);
+  if (resolved.ignore) {
+    return safeSendMessage(bot, msg.chat.id, "You are not an active player in any game right now\\.");
+  }
   if (resolved.error) return safeSendMessage(bot, msg.chat.id, escapeMarkdown(resolved.error));
 
   await submitClue(bot, resolved.game, msg.from, resolved.clue, {
@@ -38,7 +41,10 @@ export async function directDescribeMessage(bot, msg) {
   if (!text || text.startsWith("/")) return;
 
   const resolved = await resolvePrivateDescribeGame(msg.from.id, text);
-  if (resolved.error) return;
+  if (resolved.ignore) return;
+  if (resolved.error) {
+    return safeSendMessage(bot, msg.chat.id, escapeMarkdown(resolved.error));
+  }
 
   await submitClue(bot, resolved.game, msg.from, resolved.clue, {
     feedbackChatId: msg.chat.id,
@@ -50,6 +56,9 @@ export async function resolvePrivateDescribeGame(userId, rawClue) {
   const parts = rawClue.split(/\s+/).filter(Boolean);
   const possibleCode = parts[0]?.toUpperCase();
   const playerRows = await Player.find({ userId, isAlive: true }).sort({ joinedAt: -1 });
+  
+  if (playerRows.length === 0) return { ignore: true };
+  
   const gameIds = playerRows.map((player) => player.gameId);
   const games = await Game.find({ _id: { $in: gameIds }, state: "describing" }).sort({ startedAt: -1 });
 
@@ -58,7 +67,7 @@ export async function resolvePrivateDescribeGame(userId, rawClue) {
     if (codedGame) return { game: codedGame, clue: parts.slice(1).join(" ") };
   }
 
-  if (games.length === 0) return { error: "No clue round is waiting for you." };
+  if (games.length === 0) return { error: "No clue round is waiting for you. The timer might have expired or the round progressed." };
   if (games.length > 1) return { error: "You are in multiple clue rounds. Use /describe GAMECODE your clue." };
 
   return { game: games[0], clue: rawClue };

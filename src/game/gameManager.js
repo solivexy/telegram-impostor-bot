@@ -238,7 +238,7 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
   const normalizedClue = normalizeClue(clueText);
   const usedClues = await Clue.find({ gameId: game._id, roundNumber }).select("userId clue");
   const duplicate = usedClues.find((clue) => {
-    if (existing && clue.userId === user.id && clue._id.equals(existing._id)) return false;
+    if (existing && String(clue.userId) === String(user.id) && clue._id.equals(existing._id)) return false;
     return normalizeClue(clue.clue) === normalizedClue;
   });
   if (duplicate) {
