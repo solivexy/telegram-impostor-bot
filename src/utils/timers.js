@@ -13,7 +13,7 @@ export function startDeadlineScanner(bot) {
       for (const game of expiredLobbyGames) {
         game.lobbyDeadline = new Date(Date.now() + 30000);
         await game.save();
-        await startGame(bot, game);
+        await startGame(bot, game, true);
       }
 
       const expiredClueGames = await Game.find({ state: "describing", clueDeadline: { $lte: now } });

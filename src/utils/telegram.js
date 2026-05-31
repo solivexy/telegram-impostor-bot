@@ -29,6 +29,15 @@ export function userName(user) {
   return name || "User";
 }
 
+export async function checkDmEnabled(bot, userId) {
+  try {
+    await bot.sendChatAction(userId, "typing");
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 export async function safeSendMessage(bot, chatId, text, options = {}) {
   try {
     return await bot.sendMessage(chatId, text, { parse_mode: "MarkdownV2", ...options });

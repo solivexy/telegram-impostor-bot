@@ -18,7 +18,7 @@ export async function describeCommand(bot, msg) {
     } catch (error) {
       console.error("Could not delete public describe message:", error.message);
     }
-    return safeSendMessage(bot, msg.chat.id, "Send your clue privately to me with /describe your clue here\\.");
+    return safeSendMessage(bot, msg.chat.id, "Send your clue privately in our DM\\.");
   }
 
   if (!isPrivateChat(msg)) return;

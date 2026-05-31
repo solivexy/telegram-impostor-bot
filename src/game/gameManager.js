@@ -11,7 +11,7 @@ import { getVoteSummary } from "./voteManager.js";
 import { containsExactWord } from "../utils/validators.js";
 import { escapeMarkdown, bold } from "../utils/markdown.js";
 import { renderCluesImages } from "../utils/clueImage.js";
-import { lobbyKeyboard, mentionPlayer, playerName, safeEditMessage, safeSendMessage, safeSendPhoto, voteKeyboard } from "../utils/telegram.js";
+import { checkDmEnabled, lobbyKeyboard, mentionPlayer, playerName, safeEditMessage, safeSendMessage, safeSendPhoto, voteKeyboard } from "../utils/telegram.js";
 
 export async function createNewGame(bot, msg) {
   const existing = await getActiveGame(msg.chat.id);
@@ -57,11 +57,7 @@ export async function joinGame(bot, game, user) {
   const count = await Player.countDocuments({ gameId: game._id });
   if (count >= settings.maxPlayers) return `This lobby is full. Max players: ${settings.maxPlayers}.`;
 
-  const dmReady = await safeSendMessage(
-    bot,
-    user.id,
-    "You are ready to join Who's Impostor? Keep this chat open so I can send your secret word\\."
-  );
+  const dmReady = await checkDmEnabled(bot, user.id);
   if (!dmReady) {
     return "Open a private chat with me and send /start first. Then press Join Game again.";
   }
@@ -114,30 +110,47 @@ export async function cancelGame(bot, game) {
   await safeSendMessage(bot, game.telegramGroupId, "Game cancelled\\.");
 }
 
-export async function startGame(bot, game) {
+export async function startGame(bot, game, isAutoStart = false) {
   if (game.state !== "lobby") {
     await safeSendMessage(bot, game.telegramGroupId, "This game cannot be started now\\.");
     return false;
   }
 
+  game.state = "starting";
+  await game.save();
+
   const settings = await getOrCreateSettings(game.telegramGroupId);
   const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
   if (players.length < settings.minPlayers) {
-    await safeSendMessage(bot, game.telegramGroupId, `Need at least ${settings.minPlayers} players to start\\.`);
+    if (isAutoStart) {
+      game.state = "cancelled";
+      game.finishedAt = new Date();
+      await game.save();
+      await clearActiveGame(game);
+      await safeSendMessage(bot, game.telegramGroupId, `Game cancelled because there are not enough players \\(need at least ${settings.minPlayers}\\)\\.`);
+    } else {
+      game.state = "lobby";
+      await game.save();
+      await safeSendMessage(bot, game.telegramGroupId, `Need at least ${settings.minPlayers} players to start\\.`);
+    }
     return false;
   }
   if (players.length > settings.maxPlayers) {
+    game.state = "lobby";
+    await game.save();
     await safeSendMessage(bot, game.telegramGroupId, `Too many players\\. Max players: ${settings.maxPlayers}\\.`);
     return false;
   }
 
   const blocked = [];
   for (const player of players) {
-    const dm = await safeSendMessage(bot, player.userId, "DM check for Who's Impostor? You are ready for the next game\\.");
+    const dm = await checkDmEnabled(bot, player.userId);
     if (!dm) blocked.push(player);
   }
 
   if (blocked.length > 0) {
+    game.state = "lobby";
+    await game.save();
     const names = blocked.map((player) => mentionPlayer(player)).join(", ");
     await safeSendMessage(
       bot,
@@ -175,7 +188,7 @@ export async function startGame(bot, game) {
     const sent = await safeSendMessage(
       bot,
       player.userId,
-      `${bold("Your secret word")}: ${bold(player.secretWord)}\nReply here with /describe your clue without saying the exact word\\.`
+      `Your secret word: ${bold(player.secretWord)}\nJust reply here with your clue directly\\. Do not say the exact word\\.`
     );
     if (!sent) {
       game.state = "lobby";
@@ -196,7 +209,7 @@ export async function startGame(bot, game) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `Words sent\\. Describe your word privately with me using /describe your clue here\\.\nClue time: ${settings.clueTimeLimit} seconds\\.`
+    `Words sent\\. Check your DM to see your word and reply with your clue\\.\nClue time: ${settings.clueTimeLimit} seconds\\.`
   );
   return true;
 }
@@ -207,7 +220,7 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
   const roundNumber = game.roundNumber || 1;
 
   if (game.state !== "describing") return safeSendMessage(bot, feedbackChatId, "Clues are not open right now\\.");
-  if (!clueText) return safeSendMessage(bot, feedbackChatId, "Use /describe followed by your clue\\.");
+  if (!clueText) return safeSendMessage(bot, feedbackChatId, "Please provide a valid clue\\.");
   if (clueText.length > 240) return safeSendMessage(bot, feedbackChatId, "Clue is too long\\. Keep it under 240 characters\\.");
 
   const player = await Player.findOne({ gameId: game._id, userId: user.id, isAlive: true });
@@ -421,7 +434,7 @@ async function promptAlivePlayersForClues(bot, game) {
     await safeSendMessage(
       bot,
       player.userId,
-      `${bold("Round")} ${game.roundNumber}\nSend a new clue for your word with /describe your clue\\. Do not say the exact word\\.`
+      `${bold("Round")} ${game.roundNumber}\nSend a new clue for your word here\\. Do not say the exact word\\.`
     );
   }
 }
