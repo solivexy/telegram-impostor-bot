@@ -148,7 +148,7 @@ export function lobbyKeyboard(gameCode) {
 export function voteKeyboard(gameCode, players) {
   return {
     inline_keyboard: players.map((player) => [
-      { text: `Vote ${playerDisplayName(player)}`, callback_data: `vote:${gameCode}:${player.userId}` }
+      { text: playerDisplayName(player), callback_data: `vote:${gameCode}:${player.userId}` }
     ])
   };
 }
