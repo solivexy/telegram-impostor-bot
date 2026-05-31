@@ -28,14 +28,14 @@ export async function statsCommand(bot, msg) {
     `${bold("Record")}`,
     `Games: ${stat.gamesPlayed}`,
     `Wins: ${stat.wins}  •  Losses: ${stat.losses}`,
-    `Win rate: ${rateLine(winRate)}`,
+    `Win rate: ${statEmoji(winRate)} ${winRate}%`,
     "",
     `${bold("Roles")}`,
     `Normal: ${stat.normalWins}/${stat.normalGames} wins  •  ${normalWinRate}%`,
     `Impostor: ${stat.impostorWins}/${stat.impostorGames} wins  •  ${impostorWinRate}%`,
     "",
     `${bold("Survival")}`,
-    `Survived: ${rateLine(surviveRate)}`,
+    `Survived: ${statEmoji(surviveRate)} ${surviveRate}%`,
     `Eliminated: ${stat.timesEliminated} times  •  ${eliminatedRate}%`,
     "",
     `${bold("Voting")}`,
@@ -51,11 +51,10 @@ function percent(value, total) {
   return total > 0 ? Math.round((value / total) * 100) : 0;
 }
 
-function rateLine(value) {
-  return `${progressBar(value)} ${value}%`;
-}
-
-function progressBar(value) {
-  const filled = Math.round(Math.max(0, Math.min(100, value)) / 20);
-  return "■".repeat(filled) + "□".repeat(5 - filled);
+function statEmoji(value) {
+  if (value >= 80) return "🏆";
+  if (value >= 60) return "🔥";
+  if (value >= 40) return "👍";
+  if (value >= 20) return "🫡";
+  return "🌱";
 }

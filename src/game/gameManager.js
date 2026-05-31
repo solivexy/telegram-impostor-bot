@@ -116,7 +116,7 @@ export async function startGame(bot, game, isAutoStart = false) {
     return false;
   }
 
-  game.state = "starting";
+  game.state = "assigning_words";
   await game.save();
 
   const settings = await getOrCreateSettings(game.telegramGroupId);
@@ -602,7 +602,6 @@ function formatSeconds(seconds) {
 function stateLabel(state) {
   const labels = {
     lobby: "Lobby",
-    starting: "Starting",
     assigning_words: "Sending words",
     describing: "Clues",
     voting: "Voting",
