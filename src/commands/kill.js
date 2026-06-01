@@ -14,11 +14,22 @@ export async function killCommand(bot, msg) {
   const userId = msg.from.id;
   
   // Find active games where this user is an impostor
-  const player = await Player.findOne({ userId, role: "impostor", isAlive: true });
-  if (!player) return safeSendMessage(bot, userId, "You are not an active impostor in any game.");
+  const players = await Player.find({ userId, role: "impostor", isAlive: true }).sort({ joinedAt: -1 });
+  
+  let player = null;
+  let game = null;
+  
+  for (const p of players) {
+    const g = await Game.findById(p.gameId);
+    if (g && ["lobby", "assigning_words", "describing", "voting"].includes(g.state)) {
+      player = p;
+      game = g;
+      break;
+    }
+  }
 
-  const game = await Game.findById(player.gameId);
-  if (!game) return safeSendMessage(bot, userId, "Game not found.");
+  if (!player || !game) return safeSendMessage(bot, userId, "You are not an active impostor in any game.");
+
   if (game.gameMode !== "killer") {
     return safeSendMessage(bot, userId, "This command is only available in killer mode\\. Use /killer to start a killer mode game\\.");
   }
