@@ -2,12 +2,14 @@ import TelegramBot from "node-telegram-bot-api";
 import { config } from "./config.js";
 import { startCommand } from "./commands/start.js";
 import { newGameCommand } from "./commands/newgame.js";
+import { killerCommand } from "./commands/killer.js";
 import { joinCommand } from "./commands/join.js";
 import { leaveCommand } from "./commands/leave.js";
 import { startGameCommand } from "./commands/startgame.js";
 import { describeCommand, directDescribeMessage } from "./commands/describe.js";
 import { historyCommand } from "./commands/history.js";
 import { voteCommand } from "./commands/vote.js";
+import { killCommand } from "./commands/kill.js";
 import { smiteCommand } from "./commands/smite.js";
 import { statusCommand } from "./commands/status.js";
 import { statsCommand } from "./commands/stats.js";
@@ -25,6 +27,7 @@ export function createBot() {
 
   onCommand(bot, botIdentity, "start", (msg) => startCommand(bot, msg));
   onCommand(bot, botIdentity, "newgame", (msg) => newGameCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "killer", (msg) => killerCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "join", (msg) => joinCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "leave", (msg) => leaveCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "startgame", (msg) => startGameCommand(bot, msg), { exact: true });
@@ -33,6 +36,7 @@ export function createBot() {
   onCommand(bot, botIdentity, "describe", (msg) => describeCommand(bot, msg));
   onCommand(bot, botIdentity, "history", (msg) => historyCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "vote", (msg) => voteCommand(bot, msg));
+  onCommand(bot, botIdentity, "kill", (msg) => killCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
@@ -93,6 +97,7 @@ function registerBotCommands(bot) {
   bot.setMyCommands([
     { command: "start", description: "Start DM setup or show game help" },
     { command: "newgame", description: "Create a new lobby" },
+    { command: "killer", description: "Create a killer mode lobby" },
     { command: "join", description: "Join the active lobby" },
     { command: "leave", description: "Leave the active lobby" },
     { command: "startgame", description: "Start the lobby game" },
@@ -101,6 +106,7 @@ function registerBotCommands(bot) {
     { command: "describe", description: "Submit your clue in DM" },
     { command: "history", description: "View your private clue history" },
     { command: "vote", description: "Vote for a player" },
+    { command: "kill", description: "Kill a player in DM (killer mode only)" },
     { command: "status", description: "Show the current game state" },
     { command: "stats", description: "Show player stats" },
     { command: "nextgame", description: "Notify you when the next lobby opens" },

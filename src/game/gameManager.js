@@ -13,7 +13,7 @@ import { escapeMarkdown, bold } from "../utils/markdown.js";
 import { renderCluesImages } from "../utils/clueImage.js";
 import { checkDmEnabled, lobbyKeyboard, mentionPlayer, playerName, safeEditMessage, safeSendMessage, safeSendPhoto, voteKeyboard } from "../utils/telegram.js";
 
-export async function createNewGame(bot, msg) {
+export async function createNewGame(bot, msg, options = {}) {
   const existing = await getActiveGame(msg.chat.id);
   if (existing) return safeSendMessage(bot, msg.chat.id, "A game is already running here\\. Use /status to see where it is\\.");
 
@@ -22,11 +22,13 @@ export async function createNewGame(bot, msg) {
   let gameCode = generateGameCode();
   while (await Game.exists({ gameCode })) gameCode = generateGameCode();
 
+  const gameMode = options.gameMode || "normal";
   const game = await Game.create({
     groupId: group._id,
     telegramGroupId: msg.chat.id,
     creatorId: msg.from.id,
     gameCode,
+    gameMode,
     roundNumber: 1,
     state: "lobby",
     lobbyDeadline: new Date(Date.now() + (settings.lobbyTimeLimit || 60) * 1000)
@@ -185,10 +187,16 @@ export async function startGame(bot, game, isAutoStart = false) {
   await game.save();
 
   for (const player of players) {
+    const isKillerMode = game.gameMode === "killer";
+    const isImpostor = player.role === "impostor";
+    let message = `${bold("Your word")}: ${bold(player.secretWord)}\nReply with one clue\\. Do not use the exact word\\.`;
+    if (isKillerMode && isImpostor) {
+      message += `\n\n${bold("KILLER MODE")}: You can /kill one player in DM during the clue phase\\.`;
+    }
     const sent = await safeSendMessage(
       bot,
       player.userId,
-      `${bold("Your word")}: ${bold(player.secretWord)}\nReply with one clue\\. Do not use the exact word\\.`
+      message
     );
     if (!sent) {
       game.state = "lobby";
@@ -468,7 +476,8 @@ export async function renderLobby(game) {
   const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
   const lines = players.map((player, index) => `${index + 1}\\. ${mentionPlayer(player)}${player.userId === game.creatorId ? " \\(creator\\)" : ""}`);
   const timerLine = game.lobbyDeadline ? `\nStarts in: ${formatSeconds(secondsUntil(game.lobbyDeadline))}` : "";
-  return `${bold("Who's Impostor?")}\nCode: ${escapeMarkdown(game.gameCode)}\nPlayers: ${players.length}${timerLine}\n\n${lines.join("\n") || "No players yet\\."}\n\nJoin if you are playing\\. The creator or an admin can start early\\.`;
+  const modeLine = game.gameMode === "killer" ? `\n${bold("KILLER MODE")} \\- Impostors can kill once per game` : "";
+  return `${bold("Who's Impostor?")}\nCode: ${escapeMarkdown(game.gameCode)}\nPlayers: ${players.length}${timerLine}${modeLine}\n\n${lines.join("\n") || "No players yet\\."}\n\nJoin if you are playing\\. The creator or an admin can start early\\.`;
 }
 
 export async function refreshLobbyMessage(bot, game) {
@@ -619,7 +628,7 @@ function normalizeClue(clue) {
     .replace(/[^\p{L}\p{N} ]/gu, "");
 }
 
-async function updateGameStats(game, players, winningRole) {
+export async function updateGameStats(game, players, winningRole) {
   const votes = await Vote.find({ gameId: game._id });
   const votesByUser = new Map();
 

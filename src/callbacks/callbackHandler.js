@@ -4,6 +4,7 @@ import { cancelGame, joinGame, leaveGame, startGame, submitVote } from "../game/
 import { isGroupAdmin, safeAnswerCallback, safeEditMessage } from "../utils/telegram.js";
 import { showHistoryPage } from "../commands/history.js";
 import { getSettingsMenu } from "../commands/settings.js";
+import { handleKillCallback } from "../commands/kill.js";
 
 export async function handleCallback(bot, query) {
   const data = query.data || "";
@@ -89,6 +90,13 @@ export async function handleCallback(bot, query) {
       if (!Number.isSafeInteger(targetUserId)) return safeAnswerCallback(bot, query.id, "Invalid vote target.");
       const freshGame = await Game.findById(game._id);
       const result = await submitVote(bot, freshGame, query.from.id, targetUserId);
+      return safeAnswerCallback(bot, query.id, result);
+    }
+
+    if (action === "kill") {
+      const targetUserId = Number(parts[2]);
+      if (!Number.isSafeInteger(targetUserId)) return safeAnswerCallback(bot, query.id, "Invalid kill target.");
+      const result = await handleKillCallback(bot, query, gameCode, targetUserId);
       return safeAnswerCallback(bot, query.id, result);
     }
 

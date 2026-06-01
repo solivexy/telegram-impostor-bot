@@ -7,6 +7,7 @@ const gameSchema = new mongoose.Schema(
     creatorId: { type: Number, required: true, index: true },
     lobbyMessageId: { type: Number, default: null },
     gameCode: { type: String, required: true, unique: true, index: true },
+    gameMode: { type: String, enum: ["normal", "killer"], default: "normal" },
     state: {
       type: String,
       enum: ["idle", "lobby", "assigning_words", "describing", "voting", "finished", "cancelled"],
@@ -16,6 +17,7 @@ const gameSchema = new mongoose.Schema(
     mainWord: { type: String, default: "" },
     impostorWord: { type: String, default: "" },
     impostorIds: [{ type: Number }],
+    impostorKills: { type: Map, of: Number, default: {} },
     roundNumber: { type: Number, default: 1, min: 1 },
     currentTurnUserId: { type: Number, default: null },
     lobbyDeadline: { type: Date, default: null },
