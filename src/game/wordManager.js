@@ -11,6 +11,7 @@ export function pickWordAssignment() {
 }
 
 export function impostorCountForPlayers(playerCount) {
+  if (playerCount > 10) return 3;
   return playerCount >= 7 ? 2 : 1;
 }
 
