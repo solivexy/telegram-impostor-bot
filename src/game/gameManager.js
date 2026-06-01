@@ -189,7 +189,11 @@ export async function startGame(bot, game, isAutoStart = false) {
   for (const player of players) {
     const isKillerMode = game.gameMode === "killer";
     const isImpostor = player.role === "impostor";
-    let message = `${bold("Your word")}: ${bold(player.secretWord)}\nReply with one clue\\. Do not use the exact word\\.`;
+    let roleInfo = "";
+    if (isKillerMode) {
+      roleInfo = isImpostor ? `${bold("You are IMPOSTOR")}\n` : `${bold("You are CREW")}\n`;
+    }
+    let message = `${roleInfo}${bold("Your word")}: ${bold(player.secretWord)}\nReply with one clue\\. Do not use the exact word\\.`;
     if (isKillerMode && isImpostor) {
       message += `\n\n${bold("KILLER MODE")}: You can /kill one player in DM during the clue phase\\.`;
     }

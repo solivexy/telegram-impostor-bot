@@ -1,6 +1,6 @@
 import { Game } from "../models/Game.js";
 import { Player } from "../models/Player.js";
-import { getActiveGame, clearActiveGame } from "../game/stateManager.js";
+import { getActiveGame, getGameByCode, clearActiveGame } from "../game/stateManager.js";
 import { updateGameStats } from "../game/gameManager.js";
 import { safeSendMessage, mentionPlayer } from "../utils/telegram.js";
 import { bold } from "../utils/markdown.js";
@@ -19,8 +19,10 @@ export async function killCommand(bot, msg) {
 
   const game = await Game.findById(player.gameId);
   if (!game) return safeSendMessage(bot, userId, "Game not found.");
-  if (game.gameMode !== "killer") return safeSendMessage(bot, userId, "This command is only available in killer mode.");
-  if (game.state !== "describing") return safeSendMessage(bot, userId, "You can only kill during the clue phase.");
+  if (game.gameMode !== "killer") {
+    return safeSendMessage(bot, userId, "This command is only available in killer mode\\. Use /killer to start a killer mode game\\.");
+  }
+  if (game.state !== "describing") return safeSendMessage(bot, userId, "You can only kill during the clue phase\\.");
 
   const kills = game.impostorKills?.get(String(userId)) || 0;
   if (kills >= 1) return safeSendMessage(bot, userId, "You already used your kill this game.");
@@ -62,7 +64,7 @@ export async function handleKillCallback(bot, query, gameCode, targetUserId) {
   game.impostorKills.set(String(query.from.id), kills + 1);
   await game.save();
 
-  await safeSendMessage(bot, game.telegramGroupId, `${bold("Kill!")}\n${mentionPlayer(killer)} eliminated ${mentionPlayer(target)}\\. They were ${target.role === "impostor" ? "an impostor" : "not an impostor"}\\.`);
+  await safeSendMessage(bot, game.telegramGroupId, `${bold("Kill!")}\nAn impostor eliminated ${mentionPlayer(target)}\\.`);
 
   const freshGame = await Game.findById(game._id);
   const players = await Player.find({ gameId: freshGame._id }).sort({ joinedAt: 1 });
@@ -95,5 +97,3 @@ export async function handleKillCallback(bot, query, gameCode, targetUserId) {
 
   return "Player eliminated!";
 }
-
-import { getGameByCode } from "../game/stateManager.js";
