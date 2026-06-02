@@ -364,8 +364,7 @@ export async function finishVoting(bot, game) {
   const players = await Player.find({ gameId: freshGame._id }).sort({ joinedAt: 1 });
   const impostors = players.filter((player) => player.role === "impostor");
   const alivePlayers = players.filter((player) => player.isAlive);
-  const finalVoteLines = players.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
-  const aliveVoteLines = alivePlayers.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
+  const voteLines = summary.alivePlayers.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
   const alivePlayerLine = alivePlayers.length
     ? alivePlayers.map((player) => mentionPlayer(player)).join(", ")
     : "None";
@@ -410,13 +409,13 @@ export async function finishVoting(bot, game) {
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
-      `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${finalVoteLines.join("\n")}`
+      `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${voteLines.join("\n")}`
     );
     return;
   }
 
   freshGame.roundNumber = roundNumber + 1;
-  await startNextDescribeRound(bot, freshGame, eliminatedLine, aliveVoteLines, alivePlayerLine, roundNumber);
+  await startNextDescribeRound(bot, freshGame, eliminatedLine, voteLines, alivePlayerLine, roundNumber);
 }
 
 async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, alivePlayerLine, completedRoundNumber) {
