@@ -373,7 +373,7 @@ export async function finishVoting(bot, game) {
   const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
   
   const eliminatedLine = eliminated
-    ? `A player was ejected and was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
+    ? `${mentionPlayer(eliminated)} was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
     : "No one was ejected \\(Tie\\)\\.";
 
   const normalsWin = impostors.length > 0 && aliveImpostors.length === 0;
