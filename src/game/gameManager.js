@@ -363,14 +363,17 @@ export async function finishVoting(bot, game) {
 
   const players = await Player.find({ gameId: freshGame._id }).sort({ joinedAt: 1 });
   const impostors = players.filter((player) => player.role === "impostor");
-  const voteLines = players.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
-
   const alivePlayers = players.filter((player) => player.isAlive);
+  const finalVoteLines = players.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
+  const aliveVoteLines = alivePlayers.map((player) => `• ${mentionPlayer(player)}: ${summary.counts.get(player.userId) || 0}`);
+  const alivePlayerLine = alivePlayers.length
+    ? alivePlayers.map((player) => mentionPlayer(player)).join(", ")
+    : "None";
   const aliveImpostors = alivePlayers.filter((player) => player.role === "impostor");
   const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
   
   const eliminatedLine = eliminated
-    ? `${mentionPlayer(eliminated)} was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
+    ? `A player was ejected and was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
     : "No one was ejected \\(Tie\\)\\.";
 
   const normalsWin = impostors.length > 0 && aliveImpostors.length === 0;
@@ -407,16 +410,16 @@ export async function finishVoting(bot, game) {
     await safeSendMessage(
       bot,
       freshGame.telegramGroupId,
-      `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${voteLines.join("\n")}`
+      `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${finalVoteLines.join("\n")}`
     );
     return;
   }
 
   freshGame.roundNumber = roundNumber + 1;
-  await startNextDescribeRound(bot, freshGame, eliminatedLine, voteLines, roundNumber);
+  await startNextDescribeRound(bot, freshGame, eliminatedLine, aliveVoteLines, alivePlayerLine, roundNumber);
 }
 
-async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, completedRoundNumber) {
+async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, alivePlayerLine, completedRoundNumber) {
   const settings = await getOrCreateSettings(game.telegramGroupId);
   game.state = "describing";
   game.voteDeadline = null;
@@ -435,7 +438,7 @@ async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, comp
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Round result")}\nRound: ${completedRoundNumber}\nThe game continues\\. Alive players get a fresh clue prompt in DM\\.\nTime: ${formatSeconds(settings.clueTimeLimit)}\\.\n\n${bold("Votes")}\n${voteLines.join("\n")}`
+    `${bold("Round result")}\nRound: ${completedRoundNumber}\nThe game continues\\. Alive players get a fresh clue prompt in DM\\.\nTime: ${formatSeconds(settings.clueTimeLimit)}\\.\n\n${bold("Alive players")}\n${alivePlayerLine}\n\n${bold("Votes")}\n${voteLines.join("\n")}`
   );
   await promptAlivePlayersForClues(bot, game);
 }
@@ -469,11 +472,11 @@ export async function forceEndGame(bot, game) {
 }
 
 export async function renderStatus(game) {
-  const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
-  const lines = players.map((player) => `• ${mentionPlayer(player)}${player.isAlive ? "" : " \\(out\\)"}`);
+  const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
+  const lines = alivePlayers.map((player) => `• ${mentionPlayer(player)}`);
   const deadline = activeDeadline(game);
   const timerLine = deadline ? `\nTimer: ${formatSeconds(secondsUntil(deadline))} left` : "";
-  return `${bold("Game status")}\nPhase: ${escapeMarkdown(stateLabel(game.state))}${timerLine}\nPlayers: ${players.length}\n\n${lines.join("\n") || "No players yet\\."}`;
+  return `${bold("Game status")}\nPhase: ${escapeMarkdown(stateLabel(game.state))}${timerLine}\nAlive players: ${alivePlayers.length}\n\n${lines.join("\n") || "No alive players\\."}`;
 }
 
 export async function renderLobby(game) {
