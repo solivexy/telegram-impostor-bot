@@ -103,7 +103,7 @@ async function renderCluePage({ game, cards, pageNumber, totalPages, layout }) {
   for (const placement of placements) {
     if (!placement.avatar) continue;
     const input = await circularAvatar(placement.avatar, placement.size);
-    if (input) overlays.push({ input, left: placement.x, top: placement.y });
+    if (input) overlays.push({ input, left: Math.round(placement.x), top: Math.round(placement.y) });
   }
 
   let image = sharp(Buffer.from(svg));
