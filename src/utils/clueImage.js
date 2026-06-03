@@ -3,48 +3,45 @@ import { playerDisplayName } from "./telegram.js";
 
 const width = 1080;
 const margin = 48;
-const cardGap = 22;
-const cardPaddingX = 30;
-const cardPaddingY = 24;
-const lineHeight = 34;
-const titleHeight = 92;
-const footerHeight = 58;
+const titleHeight = 110;
+const footerHeight = 60;
 const maxImageHeight = 1900;
-const avatarSize = 58;
 const compactPlayerLimit = 12;
 
 const regularLayout = {
   columns: 1,
-  cardGap,
+  cardGap: 36,
   columnGap: 0,
-  cardPaddingX,
-  cardPaddingY,
-  lineHeight,
-  avatarSize,
-  nameFontSize: 27,
-  clueFontSize: 25,
-  nameMaxChars: 34,
-  clueMaxChars: 50,
-  cardRadius: 18,
-  avatarTextSize: 24,
+  cardPaddingX: 32,
+  cardPaddingY: 26,
+  lineHeight: 40,
+  avatarSize: 72,
+  avatarMarginRight: 20,
+  nameFontSize: 24,
+  clueFontSize: 32,
+  nameMaxChars: 42,
+  clueMaxChars: 46,
+  cardRadius: 28,
+  avatarTextSize: 28,
   minCardHeight: 0
 };
 
 const compactLayout = {
   columns: 2,
-  cardGap: 16,
-  columnGap: 18,
-  cardPaddingX: 18,
-  cardPaddingY: 17,
-  lineHeight: 27,
-  avatarSize: 42,
-  nameFontSize: 22,
-  clueFontSize: 20,
-  nameMaxChars: 22,
-  clueMaxChars: 31,
-  cardRadius: 14,
-  avatarTextSize: 18,
-  minCardHeight: 108
+  cardGap: 24,
+  columnGap: 24,
+  cardPaddingX: 24,
+  cardPaddingY: 20,
+  lineHeight: 32,
+  avatarSize: 52,
+  avatarMarginRight: 14,
+  nameFontSize: 19,
+  clueFontSize: 24,
+  nameMaxChars: 24,
+  clueMaxChars: 28,
+  cardRadius: 22,
+  avatarTextSize: 20,
+  minCardHeight: 0
 };
 
 export async function renderCluesImages({ game, players, clueByUser, avatarsByUserId = new Map() }) {
@@ -53,10 +50,10 @@ export async function renderCluesImages({ game, players, clueByUser, avatarsByUs
     const clue = clueByUser.get(player.userId) || "No clue submitted.";
     const nameLines = wrapText(playerDisplayName(player), layout.nameMaxChars);
     const clueLines = wrapText(clue, layout.clueMaxChars);
-    const height = Math.max(
-      layout.minCardHeight,
-      layout.cardPaddingY * 2 + nameLines.length * layout.lineHeight + 8 + clueLines.length * layout.lineHeight
-    );
+    
+    const nameHeight = nameLines.length * (layout.nameFontSize * 1.2);
+    const bubbleHeight = layout.cardPaddingY * 2 + (clueLines.length - 1) * layout.lineHeight + layout.clueFontSize;
+    const height = Math.max(layout.avatarSize, nameHeight + 8 + bubbleHeight);
 
     return {
       index,
@@ -64,6 +61,8 @@ export async function renderCluesImages({ game, players, clueByUser, avatarsByUs
       nameLines,
       clueLines,
       height,
+      nameHeight,
+      bubbleHeight,
       avatar: avatarsByUserId.get(player.userId) || null
     };
   });
@@ -93,20 +92,11 @@ async function renderCluePage({ game, cards, pageNumber, totalPages, layout }) {
 
   const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#171717"/>
-      <stop offset="100%" stop-color="#263238"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.22"/>
-    </filter>
-  </defs>
-  <rect width="${width}" height="${height}" fill="url(#bg)"/>
-  <text x="${margin}" y="${margin + 42}" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800" fill="#ffffff">Who's Impostor?</text>
-  <text x="${margin}" y="${margin + 78}" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="500" fill="#b8c7cc">Clues • Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
+  <rect width="${width}" height="${height}" fill="#000000"/>
+  <text x="${width / 2}" y="${margin + 42}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Clues</text>
+  <text x="${width / 2}" y="${margin + 82}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#8E8E93">Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
   ${cardSvg}
-  <text x="${margin}" y="${height - margin}" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="600" fill="#cfd8dc">Vote for who you think is the impostor.</text>
+  <text x="${width / 2}" y="${height - margin}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="#8E8E93">Vote for who you think is the impostor.</text>
 </svg>`;
 
   const overlays = [];
@@ -149,27 +139,39 @@ function renderCards(cards, layout, startY, placements) {
 }
 
 function renderCard(card, x, y, cardWidth, cardHeight, layout) {
-  const avatarX = x + layout.cardPaddingX;
-  const textX = avatarX + layout.avatarSize + 14;
-  const nameY = y + layout.cardPaddingY + Math.round(layout.nameFontSize * 1.05);
-  const clueStartY = nameY + card.nameLines.length * layout.lineHeight + 12;
+  const avatarX = x;
+  const bubbleX = x + layout.avatarSize + layout.avatarMarginRight;
+  const bubbleWidth = cardWidth - (layout.avatarSize + layout.avatarMarginRight);
+  
+  const avatarY = y + card.nameHeight + 8 + card.bubbleHeight - layout.avatarSize;
+
+  const nameY = y + layout.nameFontSize;
+  const bubbleY = y + card.nameHeight + 8;
+  const clueStartY = bubbleY + layout.cardPaddingY + layout.clueFontSize - 4;
+  
   const avatarColor = pickColor(card.index);
+  const nameColor = pickColorLight(card.index);
 
   const nameText = card.nameLines.map((line, index) => (
-    `<tspan x="${textX}" dy="${index === 0 ? 0 : layout.lineHeight}">${escapeXml(line)}</tspan>`
+    `<tspan x="${bubbleX + 16}" dy="${index === 0 ? 0 : layout.nameFontSize * 1.2}">${escapeXml(line)}</tspan>`
   )).join("");
 
   const clueText = card.clueLines.map((line, index) => (
-    `<tspan x="${textX}" dy="${index === 0 ? 0 : layout.lineHeight}">${escapeXml(line)}</tspan>`
+    `<tspan x="${bubbleX + layout.cardPaddingX}" dy="${index === 0 ? 0 : layout.lineHeight}">${escapeXml(line)}</tspan>`
   )).join("");
 
+  const tailPath = `M ${bubbleX + 24} ${bubbleY + card.bubbleHeight} C ${bubbleX + 8} ${bubbleY + card.bubbleHeight} ${bubbleX - 4} ${bubbleY + card.bubbleHeight + 4} ${bubbleX - 8} ${bubbleY + card.bubbleHeight + 10} C ${bubbleX - 2} ${bubbleY + card.bubbleHeight - 4} ${bubbleX + 6} ${bubbleY + card.bubbleHeight - 12} ${bubbleX + 6} ${bubbleY + card.bubbleHeight - 12}`;
+
   return `
-  <g filter="url(#shadow)">
-    <rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="${layout.cardRadius}" fill="#f8fafc"/>
-    <circle cx="${avatarX + layout.avatarSize / 2}" cy="${y + layout.cardPaddingY + layout.avatarSize / 2}" r="${layout.avatarSize / 2}" fill="${avatarColor}"/>
-    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${y + layout.cardPaddingY + Math.round(layout.avatarSize * 0.68)}" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${layout.avatarTextSize}" font-weight="800" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
-    <text x="${textX}" y="${nameY}" font-family="Inter, Arial, sans-serif" font-size="${layout.nameFontSize}" font-weight="800" fill="#102027">${nameText}</text>
-    <text x="${textX}" y="${clueStartY}" font-family="Inter, Arial, sans-serif" font-size="${layout.clueFontSize}" font-weight="500" fill="#37474f">${clueText}</text>
+  <g>
+    <circle cx="${avatarX + layout.avatarSize / 2}" cy="${avatarY + layout.avatarSize / 2}" r="${layout.avatarSize / 2}" fill="${avatarColor}"/>
+    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${avatarY + layout.avatarSize / 2 + layout.avatarTextSize * 0.35}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.avatarTextSize}" font-weight="700" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
+    <text x="${bubbleX + 16}" y="${nameY}" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.nameFontSize}" font-weight="600" fill="${nameColor}">${nameText}</text>
+    
+    <path d="${tailPath}" fill="#262628"/>
+    <rect x="${bubbleX}" y="${bubbleY}" width="${bubbleWidth}" height="${card.bubbleHeight}" rx="${layout.cardRadius}" fill="#262628"/>
+    
+    <text x="${bubbleX + layout.cardPaddingX}" y="${clueStartY}" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.clueFontSize}" font-weight="400" fill="#ffffff">${clueText}</text>
   </g>`;
 }
 
@@ -182,7 +184,7 @@ function paginateCards(cards, layout) {
   const availableHeight = maxImageHeight - margin * 2 - titleHeight - footerHeight;
 
   for (const card of cards) {
-    const nextHeight = currentHeight + card.height + (current.length > 0 ? cardGap : 0);
+    const nextHeight = currentHeight + card.height + (current.length > 0 ? layout.cardGap : 0);
     if (current.length > 0 && nextHeight > availableHeight) {
       pages.push(current);
       current = [card];
@@ -207,10 +209,11 @@ function pageContentHeight(cards, layout) {
 }
 
 function avatarPlacement(card, cardX, cardY, layout) {
+  const avatarY = cardY + card.nameHeight + 8 + card.bubbleHeight - layout.avatarSize;
   return {
     avatar: card.avatar,
-    x: cardX + layout.cardPaddingX,
-    y: cardY + layout.cardPaddingY,
+    x: cardX,
+    y: avatarY,
     size: layout.avatarSize
   };
 }
@@ -273,7 +276,12 @@ function initials(name) {
 }
 
 function pickColor(index) {
-  const colors = ["#1976d2", "#00897b", "#7b1fa2", "#c2185b", "#5d4037", "#455a64", "#ef6c00", "#2e7d32"];
+  const colors = ["#0A84FF", "#30D158", "#5E5CE6", "#FF9F0A", "#FF453A", "#FF375F", "#BF5AF2", "#32ADE6"];
+  return colors[index % colors.length];
+}
+
+function pickColorLight(index) {
+  const colors = ["#64D2FF", "#30D158", "#5E5CE6", "#FFD60A", "#FF6961", "#FF375F", "#BF5AF2", "#64D2FF"];
   return colors[index % colors.length];
 }
 
