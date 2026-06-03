@@ -8,6 +8,8 @@ const footerHeight = 60;
 const maxImageHeight = 1900;
 const compactPlayerLimit = 12;
 
+const fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'";
+
 const regularLayout = {
   columns: 1,
   cardGap: 36,
@@ -93,10 +95,10 @@ async function renderCluePage({ game, cards, pageNumber, totalPages, layout }) {
   const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
   <rect width="${width}" height="${height}" fill="#000000"/>
-  <text x="${width / 2}" y="${margin + 42}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="#ffffff">Clues</text>
-  <text x="${width / 2}" y="${margin + 82}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#8E8E93">Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
+  <text x="${width / 2}" y="${margin + 42}" text-anchor="middle" font-family="${fontFamily}" font-size="42" font-weight="700" fill="#ffffff">Clues</text>
+  <text x="${width / 2}" y="${margin + 82}" text-anchor="middle" font-family="${fontFamily}" font-size="24" font-weight="400" fill="#8E8E93">Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
   ${cardSvg}
-  <text x="${width / 2}" y="${height - margin}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="22" font-weight="500" fill="#8E8E93">Vote for who you think is the impostor.</text>
+  <text x="${width / 2}" y="${height - margin}" text-anchor="middle" font-family="${fontFamily}" font-size="22" font-weight="500" fill="#8E8E93">Vote for who you think is the impostor.</text>
 </svg>`;
 
   const overlays = [];
@@ -165,13 +167,13 @@ function renderCard(card, x, y, cardWidth, cardHeight, layout) {
   return `
   <g>
     <circle cx="${avatarX + layout.avatarSize / 2}" cy="${avatarY + layout.avatarSize / 2}" r="${layout.avatarSize / 2}" fill="${avatarColor}"/>
-    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${avatarY + layout.avatarSize / 2 + layout.avatarTextSize * 0.35}" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.avatarTextSize}" font-weight="700" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
-    <text x="${bubbleX + 16}" y="${nameY}" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.nameFontSize}" font-weight="600" fill="${nameColor}">${nameText}</text>
+    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${avatarY + layout.avatarSize / 2 + layout.avatarTextSize * 0.35}" text-anchor="middle" font-family="${fontFamily}" font-size="${layout.avatarTextSize}" font-weight="700" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
+    <text x="${bubbleX + 16}" y="${nameY}" font-family="${fontFamily}" font-size="${layout.nameFontSize}" font-weight="600" fill="${nameColor}">${nameText}</text>
     
     <path d="${tailPath}" fill="#262628"/>
     <rect x="${bubbleX}" y="${bubbleY}" width="${bubbleWidth}" height="${card.bubbleHeight}" rx="${layout.cardRadius}" fill="#262628"/>
     
-    <text x="${bubbleX + layout.cardPaddingX}" y="${clueStartY}" font-family="-apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="${layout.clueFontSize}" font-weight="400" fill="#ffffff">${clueText}</text>
+    <text x="${bubbleX + layout.cardPaddingX}" y="${clueStartY}" font-family="${fontFamily}" font-size="${layout.clueFontSize}" font-weight="400" fill="#ffffff">${clueText}</text>
   </g>`;
 }
 

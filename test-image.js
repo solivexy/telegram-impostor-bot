@@ -11,10 +11,10 @@ async function main() {
   ];
   
   const clueByUser = new Map([
-    [1, "I was in the cafeteria fixing wires. I didn't see anyone else there."],
-    [2, "I saw Charlie walking towards the medbay, looking kind of sus."],
-    [3, "That's a lie, I was doing asteroids! I have a visual task to prove it, come watch me."],
-    [4, "I just found a body in electrical."]
+    [1, "I was in the cafeteria fixing wires ⚡. I didn't see anyone else there."],
+    [2, "I saw Charlie walking towards the medbay, looking kind of sus 👀."],
+    [3, "That's a lie, I was doing asteroids ☄️! I have a visual task to prove it, come watch me."],
+    [4, "emot kebanggaan ⛲⛲⛲"]
   ]);
 
   const buffer = await renderCluesImage({ game, players, clueByUser });

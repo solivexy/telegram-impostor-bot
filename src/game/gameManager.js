@@ -15,6 +15,7 @@ import { checkDmEnabled, lobbyKeyboard, mentionPlayer, playerName, safeEditMessa
 
 const CREW_POWER_CARDS = ["detective", "silencer", "double_vote", "shield"];
 const IMPOSTOR_POWER_CARDS = ["saboteur", "double_vote", "shield"];
+const KILLER_POWER_CARD_COUNT = 2;
 
 export async function createNewGame(bot, msg, options = {}) {
   const existing = await getActiveGame(msg.chat.id);
@@ -172,11 +173,13 @@ export async function startGame(bot, game, isAutoStart = false) {
   const assignment = await pickWordAssignment(game.telegramGroupId);
   const impostorIds = chooseImpostors(players);
 
+  const powerUserIds = game.gameMode === "killer" ? choosePowerCardPlayers(players, KILLER_POWER_CARD_COUNT) : new Set();
+
   for (const player of players) {
     const isImpostor = impostorIds.includes(player.userId);
     player.role = isImpostor ? "impostor" : "normal";
     player.secretWord = isImpostor ? assignment.impostorWord : assignment.mainWord;
-    player.powerCard = game.gameMode === "killer" ? assignPowerCard(isImpostor) : "";
+    player.powerCard = powerUserIds.has(player.userId) ? assignPowerCard(isImpostor) : "";
     player.powerUsed = false;
     player.powerActiveRound = null;
     player.powerTargetUserId = null;
@@ -694,6 +697,11 @@ function applyClueSwaps(game, clueByUser, roundNumber) {
 function assignPowerCard(isImpostor) {
   const pool = isImpostor ? IMPOSTOR_POWER_CARDS : CREW_POWER_CARDS;
   return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function choosePowerCardPlayers(players, cardCount) {
+  const shuffled = [...players].sort(() => Math.random() - 0.5);
+  return new Set(shuffled.slice(0, Math.min(cardCount, shuffled.length)).map((player) => player.userId));
 }
 
 export function powerLabel(powerCard) {

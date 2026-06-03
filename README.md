@@ -94,7 +94,7 @@ Supported settings:
 3. The creator presses `Start Game` or runs `/startgame`.
 4. The bot checks that every player has opened a private chat with it.
 5. Each player receives a secret word by DM.
-   - In killer mode, each player also receives one power card: Detective, Silencer, Double Vote, Shield, or Saboteur.
+   - In killer mode, two random players also receive one power card each: Detective, Silencer, Double Vote, Shield, or Saboteur.
 6. Players run `/describe clue text` in private chat with the bot.
 7. The bot renders the clues as message-style image pages using player profile photos when available, then starts voting after all clues arrive or after the clue timer expires.
 8. Players vote with inline buttons.
@@ -103,7 +103,7 @@ Supported settings:
 
 ## Killer Mode Power Cards
 
-Power cards are only assigned in games created with `/killer`. Each player receives one random power card and can use it once per game with `/power` in DM.
+Power cards are only assigned in games created with `/killer`. Two random players receive one random power card each and can use it once per game with `/power` in DM.
 
 - `Detective` - During the clue phase, privately checks whether one player is an impostor.
 - `Silencer` - During the clue phase, blocks one player from submitting a clue this round.
