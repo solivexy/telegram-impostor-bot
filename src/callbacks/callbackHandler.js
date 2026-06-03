@@ -5,6 +5,7 @@ import { isGroupAdmin, safeAnswerCallback, safeEditMessage } from "../utils/tele
 import { showHistoryPage } from "../commands/history.js";
 import { getSettingsMenu } from "../commands/settings.js";
 import { handleKillCallback } from "../commands/kill.js";
+import { handlePowerCallback } from "../commands/power.js";
 
 export async function handleCallback(bot, query) {
   const data = query.data || "";
@@ -97,6 +98,13 @@ export async function handleCallback(bot, query) {
       const targetUserId = Number(parts[2]);
       if (!Number.isSafeInteger(targetUserId)) return safeAnswerCallback(bot, query.id, "Invalid kill target.");
       const result = await handleKillCallback(bot, query, gameCode, targetUserId);
+      return safeAnswerCallback(bot, query.id, result);
+    }
+
+    if (action === "power") {
+      const targetUserId = Number(parts[2]);
+      if (!Number.isSafeInteger(targetUserId)) return safeAnswerCallback(bot, query.id, "Invalid power target.");
+      const result = await handlePowerCallback(bot, query, gameCode, targetUserId);
       return safeAnswerCallback(bot, query.id, result);
     }
 

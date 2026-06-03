@@ -68,6 +68,7 @@ Never commit your real bot token.
 - Send plain text in DM during the describing phase to submit a clue without `/describe`.
 - `/history` - Privately shows all submitted clues from your latest game, paginated by round.
 - `/vote` - Votes during the voting phase via inline buttons or by typing a name.
+- `/power` - In private chat, uses your killer mode power card.
 - `/status` - Shows the current lobby or game state.
 - `/stats` - Shows your player stats. Reply to a user with `/stats` to view their stats.
 - `/nextgame` - Subscribes you to be notified when the next lobby opens in this group.
@@ -93,11 +94,22 @@ Supported settings:
 3. The creator presses `Start Game` or runs `/startgame`.
 4. The bot checks that every player has opened a private chat with it.
 5. Each player receives a secret word by DM.
+   - In killer mode, each player also receives one power card: Detective, Silencer, Double Vote, Shield, or Saboteur.
 6. Players run `/describe clue text` in private chat with the bot.
 7. The bot renders the clues as message-style image pages using player profile photos when available, then starts voting after all clues arrive or after the clue timer expires.
 8. Players vote with inline buttons.
 9. The bot reveals the eliminated player for the round. If neither side has won, surviving players submit new DM clues for the next round.
 10. When a side wins, the bot reveals the words, impostors, vote totals, and winner.
+
+## Killer Mode Power Cards
+
+Power cards are only assigned in games created with `/killer`. Each player receives one random power card and can use it once per game with `/power` in DM.
+
+- `Detective` - During the clue phase, privately checks whether one player is an impostor.
+- `Silencer` - During the clue phase, blocks one player from submitting a clue this round.
+- `Double Vote` - During voting, makes your vote count as 2 this round.
+- `Shield` - During voting, protects you from being ejected this round.
+- `Saboteur` - During the clue phase, swaps the displayed clues of two players before voting.
 
 ## DM Troubleshooting
 

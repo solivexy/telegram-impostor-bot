@@ -10,6 +10,15 @@ const playerSchema = new mongoose.Schema({
   secretWord: { type: String, default: "" },
   isAlive: { type: Boolean, default: true },
   hasReceivedDm: { type: Boolean, default: false },
+  powerCard: {
+    type: String,
+    enum: ["", "detective", "silencer", "double_vote", "shield", "saboteur"],
+    default: ""
+  },
+  powerUsed: { type: Boolean, default: false },
+  powerActiveRound: { type: Number, default: null },
+  powerTargetUserId: { type: Number, default: null },
+  silencedRound: { type: Number, default: null },
   joinedAt: { type: Date, default: Date.now }
 });
 

@@ -18,6 +18,15 @@ const gameSchema = new mongoose.Schema(
     impostorWord: { type: String, default: "" },
     impostorIds: [{ type: Number }],
     impostorKills: { type: Map, of: Number, default: {} },
+    clueSwaps: {
+      type: [{
+        roundNumber: { type: Number, required: true },
+        firstUserId: { type: Number, required: true },
+        secondUserId: { type: Number, required: true },
+        byUserId: { type: Number, required: true }
+      }],
+      default: []
+    },
     roundNumber: { type: Number, default: 1, min: 1 },
     currentTurnUserId: { type: Number, default: null },
     lobbyDeadline: { type: Date, default: null },

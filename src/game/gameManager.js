@@ -13,6 +13,9 @@ import { escapeMarkdown, bold } from "../utils/markdown.js";
 import { renderCluesImages } from "../utils/clueImage.js";
 import { checkDmEnabled, lobbyKeyboard, mentionPlayer, playerName, safeEditMessage, safeSendMessage, safeSendPhoto, voteKeyboard } from "../utils/telegram.js";
 
+const CREW_POWER_CARDS = ["detective", "silencer", "double_vote", "shield"];
+const IMPOSTOR_POWER_CARDS = ["saboteur", "double_vote", "shield"];
+
 export async function createNewGame(bot, msg, options = {}) {
   const existing = await getActiveGame(msg.chat.id);
   if (existing) return safeSendMessage(bot, msg.chat.id, "A game is already running here\\. Use /status to see where it is\\.");
@@ -173,6 +176,11 @@ export async function startGame(bot, game, isAutoStart = false) {
     const isImpostor = impostorIds.includes(player.userId);
     player.role = isImpostor ? "impostor" : "normal";
     player.secretWord = isImpostor ? assignment.impostorWord : assignment.mainWord;
+    player.powerCard = game.gameMode === "killer" ? assignPowerCard(isImpostor) : "";
+    player.powerUsed = false;
+    player.powerActiveRound = null;
+    player.powerTargetUserId = null;
+    player.silencedRound = null;
     player.hasReceivedDm = false;
     await player.save();
   }
@@ -197,6 +205,9 @@ export async function startGame(bot, game, isAutoStart = false) {
     if (isKillerMode && isImpostor) {
       message += `\n\n${bold("KILLER MODE")}: You can /kill one player in DM during the clue phase\\.`;
     }
+    if (isKillerMode && player.powerCard) {
+      message += `\n\n${bold("Power card")}: ${bold(powerLabel(player.powerCard))}\n${escapeMarkdown(powerDescription(player.powerCard))}\nUse /power in DM when the timing is right\\.`;
+    }
     const sent = await safeSendMessage(
       bot,
       player.userId,
@@ -210,7 +221,18 @@ export async function startGame(bot, game, isAutoStart = false) {
       game.lobbyDeadline = new Date(Date.now() + (settings.lobbyTimeLimit || 60) * 1000);
       game.clueDeadline = null;
       await game.save();
-      await Player.updateMany({ gameId: game._id }, { $set: { role: "normal", secretWord: "", hasReceivedDm: false } });
+      await Player.updateMany({ gameId: game._id }, {
+        $set: {
+          role: "normal",
+          secretWord: "",
+          hasReceivedDm: false,
+          powerCard: "",
+          powerUsed: false,
+          powerActiveRound: null,
+          powerTargetUserId: null,
+          silencedRound: null
+        }
+      });
       await safeSendMessage(bot, game.telegramGroupId, `Could not DM ${mentionPlayer(player)}\\. They must send /start in private chat first\\.`);
       return false;
     }
@@ -237,6 +259,9 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
 
   const player = await Player.findOne({ gameId: game._id, userId: user.id, isAlive: true });
   if (!player) return safeSendMessage(bot, feedbackChatId, "You are not an active player in this game\\.");
+  if (player.silencedRound === roundNumber) {
+    return safeSendMessage(bot, feedbackChatId, "You were silenced this round\\. You cannot submit a clue\\.");
+  }
   if (containsExactWord(clueText, player.secretWord)) {
     return safeSendMessage(bot, feedbackChatId, "Invalid clue\\. Do not say your exact secret word\\.");
   }
@@ -263,7 +288,7 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  const aliveCount = await Player.countDocuments({ gameId: game._id, isAlive: true });
+  const aliveCount = await countClueEligiblePlayers(game._id, roundNumber);
   const clueCount = await Clue.countDocuments({ gameId: game._id, roundNumber });
 
   if (privateSubmit) {
@@ -309,7 +334,7 @@ export async function startVoting(bot, game) {
   const settings = await getOrCreateSettings(freshGame.telegramGroupId);
   const alivePlayers = await Player.find({ gameId: freshGame._id, isAlive: true }).sort({ joinedAt: 1 });
   const clues = await Clue.find({ gameId: freshGame._id, roundNumber: freshGame.roundNumber || 1 });
-  const clueByUser = new Map(clues.map((clue) => [clue.userId, clue.clue]));
+  const clueByUser = applyClueSwaps(freshGame, new Map(clues.map((clue) => [clue.userId, clue.clue])), freshGame.roundNumber || 1);
 
   freshGame.state = "voting";
   freshGame.clueDeadline = null;
@@ -353,12 +378,18 @@ export async function finishVoting(bot, game) {
   const roundNumber = freshGame.roundNumber || 1;
   const summary = await getVoteSummary(freshGame._id, roundNumber);
   let eliminated = null;
+  let shielded = null;
   if (summary.eliminatedUserId) {
-    eliminated = await Player.findOneAndUpdate(
-      { gameId: freshGame._id, userId: summary.eliminatedUserId },
-      { $set: { isAlive: false } },
-      { new: true }
-    );
+    const target = await Player.findOne({ gameId: freshGame._id, userId: summary.eliminatedUserId });
+    if (target?.powerCard === "shield" && target.powerUsed && target.powerActiveRound === roundNumber) {
+      shielded = target;
+    } else {
+      eliminated = await Player.findOneAndUpdate(
+        { gameId: freshGame._id, userId: summary.eliminatedUserId },
+        { $set: { isAlive: false } },
+        { new: true }
+      );
+    }
   }
 
   const players = await Player.find({ gameId: freshGame._id }).sort({ joinedAt: 1 });
@@ -371,7 +402,9 @@ export async function finishVoting(bot, game) {
   const aliveImpostors = alivePlayers.filter((player) => player.role === "impostor");
   const aliveNormals = alivePlayers.filter((player) => player.role !== "impostor");
   
-  const eliminatedLine = eliminated
+  const eliminatedLine = shielded
+    ? `${mentionPlayer(shielded)} would have been ejected, but their ${bold("Shield")} blocked it\\. No one was ejected\\.`
+    : eliminated
     ? `${mentionPlayer(eliminated)} was ${eliminated.role === "impostor" ? "an impostor" : "not an impostor"}\\. ${aliveImpostors.length} impostor${aliveImpostors.length === 1 ? "" : "s"} remain\\.`
     : "No one was ejected \\(Tie\\)\\.";
 
@@ -445,10 +478,13 @@ async function startNextDescribeRound(bot, game, eliminatedLine, voteLines, aliv
 async function promptAlivePlayersForClues(bot, game) {
   const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
   for (const player of alivePlayers) {
+    const powerLine = game.gameMode === "killer" && player.powerCard && !player.powerUsed
+      ? `\nPower available: ${powerLabel(player.powerCard)}\\. Use /power if it applies this round\\.`
+      : "";
     await safeSendMessage(
       bot,
       player.userId,
-      `${bold(`Round ${game.roundNumber}`)}\nSend one new clue for your word\\. Do not use the exact word\\.`
+      `${bold(`Round ${game.roundNumber}`)}\nSend one new clue for your word\\. Do not use the exact word\\.${powerLine}`
     );
   }
 }
@@ -482,7 +518,7 @@ export async function renderLobby(game) {
   const players = await Player.find({ gameId: game._id }).sort({ joinedAt: 1 });
   const lines = players.map((player, index) => `${index + 1}\\. ${mentionPlayer(player)}${player.userId === game.creatorId ? " \\(creator\\)" : ""}`);
   const timerLine = game.lobbyDeadline ? `\nStarts in: ${formatSeconds(secondsUntil(game.lobbyDeadline))}` : "";
-  const modeLine = game.gameMode === "killer" ? `\n${bold("KILLER MODE")} \\- Impostors can kill once per game` : "";
+  const modeLine = game.gameMode === "killer" ? `\n${bold("KILLER MODE")} \\- Impostors can kill once per game\\. Power cards are enabled\\.` : "";
   return `${bold("Who's Impostor?")}\nCode: ${escapeMarkdown(game.gameCode)}\nPlayers: ${players.length}${timerLine}${modeLine}\n\n${lines.join("\n") || "No players yet\\."}\n\nJoin if you are playing\\. The creator or an admin can start early\\.`;
 }
 
@@ -497,7 +533,8 @@ export async function refreshLobbyMessage(bot, game) {
 async function sendVotePrompt(bot, game) {
   const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
   const settings = await getOrCreateSettings(game.telegramGroupId);
-  await safeSendMessage(bot, game.telegramGroupId, `${bold("Vote now")}\nRound: ${game.roundNumber || 1}\nPick the player who seems off\\. Time: ${formatSeconds(settings.voteTimeLimit)}\\.`, {
+  const powerLine = game.gameMode === "killer" ? "\nKiller mode powers like Shield and Double Vote can be used now with /power in DM\\." : "";
+  await safeSendMessage(bot, game.telegramGroupId, `${bold("Vote now")}\nRound: ${game.roundNumber || 1}\nPick the player who seems off\\. Time: ${formatSeconds(settings.voteTimeLimit)}\\.${powerLine}`, {
     reply_markup: voteKeyboard(game.gameCode, alivePlayers)
   });
 }
@@ -527,8 +564,9 @@ async function sendClueProgress(bot, game) {
   const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
   const clues = await Clue.find({ gameId: game._id, roundNumber: game.roundNumber || 1 });
   const submittedIds = new Set(clues.map((clue) => clue.userId));
-  const submitted = alivePlayers.filter((player) => submittedIds.has(player.userId));
-  const pending = alivePlayers.filter((player) => !submittedIds.has(player.userId));
+  const eligiblePlayers = alivePlayers.filter((player) => player.silencedRound !== (game.roundNumber || 1));
+  const submitted = eligiblePlayers.filter((player) => submittedIds.has(player.userId));
+  const pending = eligiblePlayers.filter((player) => !submittedIds.has(player.userId));
 
   const submittedLine = submitted.length
     ? submitted.map((player) => mentionPlayer(player)).join(", ")
@@ -540,7 +578,7 @@ async function sendClueProgress(bot, game) {
   await safeSendMessage(
     bot,
     game.telegramGroupId,
-    `${bold("Clue progress")}: ${submitted.length}/${alivePlayers.length}\nDone: ${submittedLine}\nWaiting: ${pendingLine}`
+    `${bold("Clue progress")}: ${submitted.length}/${eligiblePlayers.length}\nDone: ${submittedLine}\nWaiting: ${pendingLine}`
   );
 }
 
@@ -634,6 +672,52 @@ function normalizeClue(clue) {
     .replace(/[^\p{L}\p{N} ]/gu, "");
 }
 
+async function countClueEligiblePlayers(gameId, roundNumber) {
+  return Player.countDocuments({
+    gameId,
+    isAlive: true,
+    $or: [{ silencedRound: { $ne: roundNumber } }, { silencedRound: null }]
+  });
+}
+
+function applyClueSwaps(game, clueByUser, roundNumber) {
+  const swaps = (game.clueSwaps || []).filter((swap) => swap.roundNumber === roundNumber);
+  for (const swap of swaps) {
+    const firstClue = clueByUser.get(swap.firstUserId);
+    const secondClue = clueByUser.get(swap.secondUserId);
+    clueByUser.set(swap.firstUserId, secondClue);
+    clueByUser.set(swap.secondUserId, firstClue);
+  }
+  return clueByUser;
+}
+
+function assignPowerCard(isImpostor) {
+  const pool = isImpostor ? IMPOSTOR_POWER_CARDS : CREW_POWER_CARDS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+export function powerLabel(powerCard) {
+  const labels = {
+    detective: "Detective",
+    silencer: "Silencer",
+    double_vote: "Double Vote",
+    shield: "Shield",
+    saboteur: "Saboteur"
+  };
+  return labels[powerCard] || "No power";
+}
+
+export function powerDescription(powerCard) {
+  const descriptions = {
+    detective: "Pick one player to privately learn whether they are an impostor.",
+    silencer: "During the clue phase, block one player from submitting a clue this round.",
+    double_vote: "During voting, make your vote count as 2 this round.",
+    shield: "During voting, protect yourself from being ejected this round.",
+    saboteur: "During the clue phase, swap the displayed clues of two players before voting."
+  };
+  return descriptions[powerCard] || "No power card assigned.";
+}
+
 export async function updateGameStats(game, players, winningRole) {
   const votes = await Vote.find({ gameId: game._id });
   const votesByUser = new Map();
@@ -696,7 +780,12 @@ export function playerFromUser(game, user) {
     role: "normal",
     secretWord: "",
     isAlive: true,
-    hasReceivedDm: false
+    hasReceivedDm: false,
+    powerCard: "",
+    powerUsed: false,
+    powerActiveRound: null,
+    powerTargetUserId: null,
+    silencedRound: null
   };
 }
 

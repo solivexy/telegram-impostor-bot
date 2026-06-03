@@ -10,6 +10,7 @@ import { describeCommand, directDescribeMessage } from "./commands/describe.js";
 import { historyCommand } from "./commands/history.js";
 import { voteCommand } from "./commands/vote.js";
 import { killCommand } from "./commands/kill.js";
+import { powerCommand } from "./commands/power.js";
 import { smiteCommand } from "./commands/smite.js";
 import { statusCommand } from "./commands/status.js";
 import { statsCommand } from "./commands/stats.js";
@@ -37,6 +38,7 @@ export function createBot() {
   onCommand(bot, botIdentity, "history", (msg) => historyCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "vote", (msg) => voteCommand(bot, msg));
   onCommand(bot, botIdentity, "kill", (msg) => killCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "power", (msg) => powerCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
@@ -107,6 +109,7 @@ function registerBotCommands(bot) {
     { command: "history", description: "View your private clue history" },
     { command: "vote", description: "Vote for a player" },
     { command: "kill", description: "Kill a player in DM (killer mode only)" },
+    { command: "power", description: "Use your killer mode power card" },
     { command: "status", description: "Show the current game state" },
     { command: "stats", description: "Show player stats" },
     { command: "nextgame", description: "Notify you when the next lobby opens" },
