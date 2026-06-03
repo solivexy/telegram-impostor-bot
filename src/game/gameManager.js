@@ -166,7 +166,7 @@ export async function startGame(bot, game, isAutoStart = false) {
   game.lobbyDeadline = null;
   await game.save();
 
-  const assignment = pickWordAssignment();
+  const assignment = await pickWordAssignment(game.telegramGroupId);
   const impostorIds = chooseImpostors(players);
 
   for (const player of players) {
