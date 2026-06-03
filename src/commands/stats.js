@@ -19,28 +19,17 @@ export async function statsCommand(bot, msg) {
   const impostorWinRate = percent(stat.impostorWins, stat.impostorGames);
   const eliminatedRate = percent(stat.timesEliminated, stat.gamesPlayed);
   const surviveRate = stat.gamesPlayed > 0 ? Math.max(0, 100 - eliminatedRate) : 0;
+  const survivedTimes = stat.gamesPlayed - stat.timesEliminated;
   const avgVotes = stat.gamesPlayed > 0 ? (stat.totalVotesCast / stat.gamesPlayed).toFixed(1) : "0.0";
 
-  const contextLine = isGroupChat(msg) ? "Reply to someone with /stats to see their stats\\." : "";
+  const contextLine = isGroupChat(msg) ? "_Reply to someone with /stats to see theirs\\._" : "";
   const lines = [
-    `📊 ${bold("Stats")}: ${escapeMarkdown(playerDisplayName(stat))}`,
+    `📊 ${bold(escapeMarkdown(playerDisplayName(stat)))}`,
     "",
-    `${bold("Record")}`,
-    `Games: ${stat.gamesPlayed}`,
-    `Wins: ${stat.wins}  •  Losses: ${stat.losses}`,
-    `Win rate: ${statEmoji(winRate)} ${winRate}%`,
-    "",
-    `${bold("Roles")}`,
-    `Normal: ${stat.normalWins}/${stat.normalGames} wins  •  ${normalWinRate}%`,
-    `Impostor: ${stat.impostorWins}/${stat.impostorGames} wins  •  ${impostorWinRate}%`,
-    "",
-    `${bold("Survival")}`,
-    `Survived: ${statEmoji(surviveRate)} ${surviveRate}%`,
-    `Eliminated: ${stat.timesEliminated} times  •  ${eliminatedRate}%`,
-    "",
-    `${bold("Voting")}`,
-    `Votes cast: ${stat.totalVotesCast}`,
-    `Average: ${escapeMarkdown(avgVotes)} per game`
+    `🎮 ${bold("Played:")} ${stat.gamesPlayed}  •  🏆 ${bold("Won:")} ${stat.wins} (${winRate}%)`,
+    `👨‍🚀 ${bold("Crewmate:")} ${normalWinRate}%  •  🥷 ${bold("Impostor:")} ${impostorWinRate}%`,
+    `🛡️ ${bold("Survive:")} ${survivedTimes} (${surviveRate}%)  •  💀 ${bold("Dead:")} ${stat.timesEliminated} (${eliminatedRate}%)`,
+    `🗳️ ${bold("Avg Votes:")} ${escapeMarkdown(avgVotes)}`
   ];
 
   if (contextLine) lines.push("", contextLine);
@@ -49,12 +38,4 @@ export async function statsCommand(bot, msg) {
 
 function percent(value, total) {
   return total > 0 ? Math.round((value / total) * 100) : 0;
-}
-
-function statEmoji(value) {
-  if (value >= 80) return "🏆";
-  if (value >= 60) return "🔥";
-  if (value >= 40) return "👍";
-  if (value >= 20) return "🫡";
-  return "🌱";
 }

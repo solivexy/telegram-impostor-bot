@@ -8,7 +8,13 @@ const footerHeight = 60;
 const maxImageHeight = 1900;
 const compactPlayerLimit = 12;
 
-const fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'";
+const fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+const emojiFontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'";
+
+function renderEmoji(text) {
+  const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu;
+  return text.replace(emojiRegex, `<tspan font-family="${emojiFontFamily}">$&</tspan>`);
+}
 
 const regularLayout = {
   columns: 1,
@@ -155,11 +161,11 @@ function renderCard(card, x, y, cardWidth, cardHeight, layout) {
   const nameColor = pickColorLight(card.index);
 
   const nameText = card.nameLines.map((line, index) => (
-    `<tspan x="${bubbleX + 16}" dy="${index === 0 ? 0 : layout.nameFontSize * 1.2}">${escapeXml(line)}</tspan>`
+    `<tspan x="${bubbleX + 16}" dy="${index === 0 ? 0 : layout.nameFontSize * 1.2}">${renderEmoji(escapeXml(line))}</tspan>`
   )).join("");
 
   const clueText = card.clueLines.map((line, index) => (
-    `<tspan x="${bubbleX + layout.cardPaddingX}" dy="${index === 0 ? 0 : layout.lineHeight}">${escapeXml(line)}</tspan>`
+    `<tspan x="${bubbleX + layout.cardPaddingX}" dy="${index === 0 ? 0 : layout.lineHeight}">${renderEmoji(escapeXml(line))}</tspan>`
   )).join("");
 
   const tailPath = `M ${bubbleX + 24} ${bubbleY + card.bubbleHeight} C ${bubbleX + 8} ${bubbleY + card.bubbleHeight} ${bubbleX - 4} ${bubbleY + card.bubbleHeight + 4} ${bubbleX - 8} ${bubbleY + card.bubbleHeight + 10} C ${bubbleX - 2} ${bubbleY + card.bubbleHeight - 4} ${bubbleX + 6} ${bubbleY + card.bubbleHeight - 12} ${bubbleX + 6} ${bubbleY + card.bubbleHeight - 12}`;
