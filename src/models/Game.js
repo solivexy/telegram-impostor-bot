@@ -28,6 +28,7 @@ const gameSchema = new mongoose.Schema(
       default: []
     },
     roundNumber: { type: Number, default: 1, min: 1 },
+    tieBreakRound: { type: Number, default: 0 },
     currentTurnUserId: { type: Number, default: null },
     lobbyDeadline: { type: Date, default: null },
     clueDeadline: { type: Date, default: null },

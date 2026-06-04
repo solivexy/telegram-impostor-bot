@@ -7,7 +7,7 @@ import { UserStat } from "../models/UserStat.js";
 import { NextGameSubscription } from "../models/NextGameSubscription.js";
 import { pickWordAssignment, chooseImpostors } from "./wordManager.js";
 import { getOrCreateGroup, getOrCreateSettings, getActiveGame, clearActiveGame, generateGameCode } from "./stateManager.js";
-import { getVoteSummary } from "./voteManager.js";
+import { getVoteSummary, getEffectiveRound } from "./voteManager.js";
 import { containsExactWord } from "../utils/validators.js";
 import { escapeMarkdown, bold } from "../utils/markdown.js";
 import { renderCluesImages } from "../utils/clueImage.js";
@@ -341,6 +341,7 @@ export async function startVoting(bot, game) {
 
   freshGame.state = "voting";
   freshGame.clueDeadline = null;
+  freshGame.tieBreakRound = 0;
   freshGame.voteDeadline = new Date(Date.now() + settings.voteTimeLimit * 1000);
   await freshGame.save();
 
@@ -352,25 +353,31 @@ export async function startVoting(bot, game) {
 export async function submitVote(bot, game, voterUserId, targetUserId) {
   if (game.state !== "voting") return "Voting is not open right now.";
 
-  const voter = await Player.findOne({ gameId: game._id, userId: voterUserId, isAlive: true });
+  // Re-fetch game to get current tieBreakRound (may have changed during a tie-break)
+  const freshGame = await Game.findById(game._id);
+  if (!freshGame || freshGame.state !== "voting") return "Voting is not open right now.";
+
+  const voter = await Player.findOne({ gameId: freshGame._id, userId: voterUserId, isAlive: true });
   if (!voter) return "You are not an active player in this game.";
   if (voterUserId === targetUserId) return "You cannot vote for yourself.";
 
-  const target = await Player.findOne({ gameId: game._id, userId: targetUserId, isAlive: true });
+  const target = await Player.findOne({ gameId: freshGame._id, userId: targetUserId, isAlive: true });
   if (!target) return "That player is not an active voting target.";
 
+  const effectiveRound = getEffectiveRound(freshGame);
+
   try {
-    await Vote.create({ gameId: game._id, roundNumber: game.roundNumber || 1, voterId: voterUserId, targetId: targetUserId });
+    await Vote.create({ gameId: freshGame._id, roundNumber: effectiveRound, voterId: voterUserId, targetId: targetUserId });
   } catch (error) {
     if (error.code === 11000) return "You already voted.";
     throw error;
   }
 
-  await sendVoteProgress(bot, game);
+  await sendVoteProgress(bot, freshGame);
 
-  const aliveCount = await Player.countDocuments({ gameId: game._id, isAlive: true });
-  const voteCount = await Vote.countDocuments({ gameId: game._id, roundNumber: game.roundNumber || 1 });
-  if (voteCount >= aliveCount) await finishVoting(bot, game);
+  const aliveCount = await Player.countDocuments({ gameId: freshGame._id, isAlive: true });
+  const voteCount = await Vote.countDocuments({ gameId: freshGame._id, roundNumber: effectiveRound });
+  if (voteCount >= aliveCount) await finishVoting(bot, freshGame);
   return "Vote recorded.";
 }
 
@@ -378,13 +385,47 @@ export async function finishVoting(bot, game) {
   const freshGame = await Game.findById(game._id);
   if (!freshGame || freshGame.state !== "voting") return;
 
+  const effectiveRound = getEffectiveRound(freshGame);
+  const summary = await getVoteSummary(freshGame._id, effectiveRound);
+
+  // Handle tie — start tie-break re-vote with only tied players
+  if (summary.tied && summary.tiedUserIds.length >= 2) {
+    const tiedPlayers = freshGame._id
+      ? await Player.find({ gameId: freshGame._id, userId: { $in: summary.tiedUserIds } }).sort({ joinedAt: 1 })
+      : [];
+    const tiedNames = tiedPlayers.map((player) => mentionPlayer(player)).join(", ");
+    const topVotes = summary.counts.get(summary.tiedUserIds[0]) || 0;
+
+    await safeSendMessage(
+      bot,
+      freshGame.telegramGroupId,
+      `${bold("Tie!")}\n${tiedNames} tied with ${topVotes} vote${topVotes === 1 ? "" : "s"} each\\.\nVote again\\! Only tied players can be ejected\\.`
+    );
+
+    freshGame.tieBreakRound = (freshGame.tieBreakRound || 0) + 1;
+    const settings = await getOrCreateSettings(freshGame.telegramGroupId);
+    freshGame.voteDeadline = new Date(Date.now() + settings.voteTimeLimit * 1000);
+    await freshGame.save();
+
+    await safeSendMessage(
+      bot,
+      freshGame.telegramGroupId,
+      `${bold("Tie\\-break vote")}\nPick who to eject from the tied players\\. Time: ${formatSeconds(settings.voteTimeLimit)}\\.`,
+      { reply_markup: voteKeyboard(freshGame.gameCode, tiedPlayers) }
+    );
+    return;
+  }
+
+  // Clear winner — reset tie-break counter
+  freshGame.tieBreakRound = 0;
+  await freshGame.save();
+
   const roundNumber = freshGame.roundNumber || 1;
-  const summary = await getVoteSummary(freshGame._id, roundNumber);
   let eliminated = null;
   let shielded = null;
   if (summary.eliminatedUserId) {
     const target = await Player.findOne({ gameId: freshGame._id, userId: summary.eliminatedUserId });
-    if (target?.powerCard === "shield" && target.powerUsed && target.powerActiveRound === roundNumber) {
+    if (target?.powerCard === "shield" && target.powerUsed && target.powerActiveRound === effectiveRound) {
       shielded = target;
     } else {
       eliminated = await Player.findOneAndUpdate(
@@ -544,7 +585,7 @@ async function sendVotePrompt(bot, game) {
 
 async function sendVoteProgress(bot, game) {
   const alivePlayers = await Player.find({ gameId: game._id, isAlive: true }).sort({ joinedAt: 1 });
-  const votes = await Vote.find({ gameId: game._id, roundNumber: game.roundNumber || 1 });
+  const votes = await Vote.find({ gameId: game._id, roundNumber: getEffectiveRound(game) });
   const votedIds = new Set(votes.map((vote) => vote.voterId));
   const voted = alivePlayers.filter((player) => votedIds.has(player.userId));
   const pending = alivePlayers.filter((player) => !votedIds.has(player.userId));
@@ -836,7 +877,7 @@ export async function handleSmite(bot, game, target) {
     const clueCount = await Clue.countDocuments({ gameId: freshGame._id, roundNumber: freshGame.roundNumber || 1 });
     if (clueCount >= alivePlayers.length) await startVoting(bot, freshGame);
   } else if (freshGame.state === "voting") {
-    const voteCount = await Vote.countDocuments({ gameId: freshGame._id, roundNumber: freshGame.roundNumber || 1 });
+    const voteCount = await Vote.countDocuments({ gameId: freshGame._id, roundNumber: getEffectiveRound(freshGame) });
     if (voteCount >= alivePlayers.length) await finishVoting(bot, freshGame);
   }
 }

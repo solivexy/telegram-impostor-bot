@@ -2,6 +2,7 @@ import { Game } from "../models/Game.js";
 import { Player } from "../models/Player.js";
 import { Clue } from "../models/Clue.js";
 import { getGameByCode } from "../game/stateManager.js";
+import { getEffectiveRound } from "../game/voteManager.js";
 import { powerDescription, powerLabel, startVoting } from "../game/gameManager.js";
 import { bold, escapeMarkdown } from "../utils/markdown.js";
 import { mentionPlayer, playerName, safeSendMessage } from "../utils/telegram.js";
@@ -31,7 +32,7 @@ export async function powerCommand(bot, msg) {
 
   if (player.powerCard === "double_vote" || player.powerCard === "shield") {
     player.powerUsed = true;
-    player.powerActiveRound = game.roundNumber || 1;
+    player.powerActiveRound = getEffectiveRound(game);
     await player.save();
     return safeSendMessage(bot, msg.chat.id, `${bold(powerLabel(player.powerCard))} activated for this voting round\\.`);
   }

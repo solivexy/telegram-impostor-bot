@@ -1,6 +1,10 @@
 import { Player } from "../models/Player.js";
 import { Vote } from "../models/Vote.js";
 
+export function getEffectiveRound(game) {
+  return (game.roundNumber || 1) * 100 + (game.tieBreakRound || 0);
+}
+
 export async function getVoteSummary(gameId, roundNumber = 1) {
   const votes = await Vote.find({ gameId, roundNumber });
   const alivePlayers = await Player.find({ gameId, isAlive: true }).sort({ joinedAt: 1 });
@@ -20,5 +24,7 @@ export async function getVoteSummary(gameId, roundNumber = 1) {
   const tied = top ? sorted.filter((entry) => entry[1] === top[1]) : [];
   const eliminatedUserId = top && top[1] > 0 && tied.length === 1 ? top[0] : null;
 
-  return { votes, alivePlayers, counts, eliminatedUserId, tied: tied.length > 1 };
+  const tiedUserIds = tied.length > 1 ? tied.map((entry) => entry[0]) : [];
+
+  return { votes, alivePlayers, counts, eliminatedUserId, tied: tied.length > 1, tiedUserIds };
 }
