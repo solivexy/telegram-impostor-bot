@@ -26,9 +26,13 @@ export async function statsCommand(bot, msg) {
   const lines = [
     `📊 ${bold(escapeMarkdown(playerDisplayName(stat)))}`,
     "",
-    `🎮 ${bold("Played:")} ${stat.gamesPlayed}  •  🏆 ${bold("Won:")} ${stat.wins} (${winRate}%)`,
-    `👨‍🚀 ${bold("Crewmate:")} ${normalWinRate}%  •  🥷 ${bold("Impostor:")} ${impostorWinRate}%`,
-    `🛡️ ${bold("Survive:")} ${survivedTimes} (${surviveRate}%)  •  💀 ${bold("Dead:")} ${stat.timesEliminated} (${eliminatedRate}%)`,
+    `🎮 ${bold("Games:")} ${stat.gamesPlayed}   🏆 ${bold("Wins:")} ${stat.wins} \\(${winRate}%\\)`,
+    "",
+    `👨‍🚀 ${bold("Crewmate")}  ${stat.normalWins}/${stat.normalGames} \\(${normalWinRate}%\\)`,
+    `🥷 ${bold("Impostor")}  ${stat.impostorWins}/${stat.impostorGames} \\(${impostorWinRate}%\\)`,
+    "",
+    `🛡️ ${bold("Survived:")} ${survivedTimes} \\(${surviveRate}%\\)`,
+    `💀 ${bold("Eliminated:")} ${stat.timesEliminated} \\(${eliminatedRate}%\\)`,
     `🗳️ ${bold("Avg Votes:")} ${escapeMarkdown(avgVotes)}`
   ];
 
