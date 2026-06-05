@@ -14,6 +14,7 @@ import { powerCommand } from "./commands/power.js";
 import { smiteCommand } from "./commands/smite.js";
 import { statusCommand } from "./commands/status.js";
 import { statsCommand } from "./commands/stats.js";
+import { achievementsCommand } from "./commands/achievements.js";
 import { nextGameCommand } from "./commands/nextgame.js";
 import { settingsCommand, setCommand } from "./commands/settings.js";
 import { cancelGameCommand, endGameCommand, killGameCommand } from "./commands/endgame.js";
@@ -42,6 +43,8 @@ export function createBot() {
   onCommand(bot, botIdentity, "smite", (msg) => smiteCommand(bot, msg));
   onCommand(bot, botIdentity, "status", (msg) => statusCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "stats", (msg) => statsCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "achievements", (msg) => achievementsCommand(bot, msg), { exact: true });
+  onCommand(bot, botIdentity, "achievement", (msg) => achievementsCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "nextgame", (msg) => nextGameCommand(bot, msg), { exact: true });
   onCommand(bot, botIdentity, "settings", (msg) => settingsCommand(bot, msg, botIdentity.username), { exact: true });
   onCommand(bot, botIdentity, "set", (msg) => setCommand(bot, msg));
@@ -112,6 +115,7 @@ function registerBotCommands(bot) {
     { command: "power", description: "Use your killer mode power card" },
     { command: "status", description: "Show the current game state" },
     { command: "stats", description: "Show player stats" },
+    { command: "achievements", description: "Show unlocked and locked achievements" },
     { command: "nextgame", description: "Notify you when the next lobby opens" },
     { command: "settings", description: "Show group settings" },
     { command: "set", description: "Admin-only setting change" },

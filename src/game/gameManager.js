@@ -8,6 +8,7 @@ import { NextGameSubscription } from "../models/NextGameSubscription.js";
 import { pickWordAssignment, chooseImpostors } from "./wordManager.js";
 import { getOrCreateGroup, getOrCreateSettings, getActiveGame, clearActiveGame, generateGameCode } from "./stateManager.js";
 import { getVoteSummary, getEffectiveRound } from "./voteManager.js";
+import { evaluateGameAchievements } from "./achievementManager.js";
 import { containsExactWord } from "../utils/validators.js";
 import { escapeMarkdown, bold } from "../utils/markdown.js";
 import { renderCluesImages } from "../utils/clueImage.js";
@@ -488,6 +489,7 @@ export async function finishVoting(bot, game) {
       freshGame.telegramGroupId,
       `${bold("Final result")}\nRounds: ${roundNumber}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}\n\n${bold("Last vote")}\n${voteLines.join("\n")}`
     );
+    await evaluateGameAchievements(bot, freshGame, players, winningRole);
     return;
   }
 
@@ -869,6 +871,7 @@ export async function handleSmite(bot, game, target) {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await safeSendMessage(bot, freshGame.telegramGroupId, `${bold(winner)}\nWinners: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with the crew\\."}`);
     await safeSendMessage(bot, freshGame.telegramGroupId, `${bold("Final result")}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map((player) => mentionPlayer(player)).join(", ")}`);
+    await evaluateGameAchievements(bot, freshGame, players, winningRole);
     return;
   }
 

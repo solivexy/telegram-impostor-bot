@@ -2,13 +2,13 @@ import { Player } from "../models/Player.js";
 import { getActiveGame } from "../game/stateManager.js";
 import { handleSmite } from "../game/gameManager.js";
 import { isGroupChat, normalizeUsername, parseCommandText } from "../utils/validators.js";
-import { safeSendMessage, isGroupAdmin } from "../utils/telegram.js";
+import { safeSendMessage, isAdminOrDeveloper } from "../utils/telegram.js";
 
 export async function smiteCommand(bot, msg) {
   if (!isGroupChat(msg)) return safeSendMessage(bot, msg.chat.id, "Use /smite in a group\\.");
 
-  const isAdmin = await isGroupAdmin(bot, msg.chat.id, msg.from.id);
-  if (!isAdmin) return safeSendMessage(bot, msg.chat.id, "Only group admins can use this command\\.");
+  const allowed = await isAdminOrDeveloper(bot, msg.chat.id, msg.from.id);
+  if (!allowed) return safeSendMessage(bot, msg.chat.id, "Only group admins can use this command\\.");
 
   const game = await getActiveGame(msg.chat.id);
   if (!game) return safeSendMessage(bot, msg.chat.id, "No active game\\.");

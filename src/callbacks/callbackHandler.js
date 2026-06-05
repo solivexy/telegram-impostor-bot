@@ -1,7 +1,7 @@
 import { Game } from "../models/Game.js";
 import { getGameByCode, getOrCreateSettings } from "../game/stateManager.js";
 import { cancelGame, joinGame, leaveGame, startGame, submitVote } from "../game/gameManager.js";
-import { isGroupAdmin, safeAnswerCallback, safeEditMessage } from "../utils/telegram.js";
+import { isGroupAdmin, isAdminOrDeveloper, safeAnswerCallback, safeEditMessage } from "../utils/telegram.js";
 import { showHistoryPage } from "../commands/history.js";
 import { getSettingsMenu } from "../commands/settings.js";
 import { handleKillCallback } from "../commands/kill.js";
@@ -73,14 +73,14 @@ export async function handleCallback(bot, query) {
     }
 
     if (action === "start") {
-      const allowed = query.from.id === game.creatorId || await isGroupAdmin(bot, game.telegramGroupId, query.from.id);
+      const allowed = query.from.id === game.creatorId || await isAdminOrDeveloper(bot, game.telegramGroupId, query.from.id);
       if (!allowed) return safeAnswerCallback(bot, query.id, "Only the creator or an admin can start.");
       await safeAnswerCallback(bot, query.id, "Starting game...");
       return startGame(bot, game);
     }
 
     if (action === "cancel") {
-      const allowed = query.from.id === game.creatorId || await isGroupAdmin(bot, game.telegramGroupId, query.from.id);
+      const allowed = query.from.id === game.creatorId || await isAdminOrDeveloper(bot, game.telegramGroupId, query.from.id);
       if (!allowed) return safeAnswerCallback(bot, query.id, "Only the creator or an admin can cancel.");
       await safeAnswerCallback(bot, query.id, "Cancelling game...");
       return cancelGame(bot, game);

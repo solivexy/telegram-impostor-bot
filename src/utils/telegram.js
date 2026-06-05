@@ -1,8 +1,15 @@
 import { escapeMarkdown } from "./markdown.js";
+import { isDeveloper } from "../config.js";
+
+const DEV_TAG = " [DEV]";
 
 function stripEmojis(str) {
   if (!str) return str;
   return str.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim();
+}
+
+function withDevTag(name, userId) {
+  return isDeveloper(userId) ? `${name}${DEV_TAG}` : name;
 }
 
 export function playerName(player) {
@@ -10,7 +17,7 @@ export function playerName(player) {
   let name = stripEmojis(player.firstName);
   if (!name && player.username) name = player.username;
   if (!name) name = String(player.userId);
-  return name || "Player";
+  return withDevTag(name || "Player", player.userId);
 }
 
 export function playerDisplayName(player) {
@@ -18,7 +25,7 @@ export function playerDisplayName(player) {
   let name = stripEmojis(player.firstName);
   if (!name && player.username) name = player.username;
   if (!name) name = String(player.userId);
-  return name || "Player";
+  return withDevTag(name || "Player", player.userId);
 }
 
 export function userName(user) {
@@ -26,7 +33,7 @@ export function userName(user) {
   let name = stripEmojis(user.first_name);
   if (!name && user.username) name = user.username;
   if (!name) name = String(user.id);
-  return name || "User";
+  return withDevTag(name || "User", user.id);
 }
 
 export async function checkDmEnabled(bot, userId) {
@@ -124,6 +131,11 @@ export async function isGroupAdmin(bot, chatId, userId) {
     console.error("Telegram getChatMember failed:", error.message);
     return false;
   }
+}
+
+export async function isAdminOrDeveloper(bot, chatId, userId) {
+  if (isDeveloper(userId)) return true;
+  return isGroupAdmin(bot, chatId, userId);
 }
 
 export function mentionPlayer(player) {

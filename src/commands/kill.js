@@ -2,6 +2,7 @@ import { Game } from "../models/Game.js";
 import { Player } from "../models/Player.js";
 import { getActiveGame, getGameByCode, clearActiveGame } from "../game/stateManager.js";
 import { updateGameStats } from "../game/gameManager.js";
+import { evaluateGameAchievements } from "../game/achievementManager.js";
 import { safeSendMessage, mentionPlayer } from "../utils/telegram.js";
 import { bold } from "../utils/markdown.js";
 
@@ -104,6 +105,7 @@ export async function handleKillCallback(bot, query, gameCode, targetUserId) {
     await new Promise(resolve => setTimeout(resolve, 1500));
     await safeSendMessage(bot, freshGame.telegramGroupId, `${bold(winner)}\nWinners: ${winnerNames}\n${normalsWin ? "All impostors were eliminated\\." : "Impostors reached parity with the crew\\."}`);
     await safeSendMessage(bot, freshGame.telegramGroupId, `${bold("Final result")}\nMain word: ${bold(freshGame.mainWord)}\nImpostor word: ${bold(freshGame.impostorWord)}\nImpostors: ${impostors.map(p => mentionPlayer(p)).join(", ")}`);
+    await evaluateGameAchievements(bot, freshGame, players, winningRole);
   }
 
   return "Player eliminated!";
