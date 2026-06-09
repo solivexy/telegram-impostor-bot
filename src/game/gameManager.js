@@ -259,6 +259,9 @@ export async function submitClue(bot, game, user, clueText, options = {}) {
 
   if (game.state !== "describing") return safeSendMessage(bot, feedbackChatId, "Clues are not open right now\\.");
   if (!clueText) return safeSendMessage(bot, feedbackChatId, "Please provide a valid clue\\.");
+  
+  const wordCount = clueText.trim().split(/\s+/).length;
+  if (wordCount > 10) return safeSendMessage(bot, feedbackChatId, "Clue is too long\\. Keep it to 10 words or less\\.");
   if (clueText.length > 240) return safeSendMessage(bot, feedbackChatId, "Clue is too long\\. Keep it under 240 characters\\.");
 
   const player = await Player.findOne({ gameId: game._id, userId: user.id, isAlive: true });
