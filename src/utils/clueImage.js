@@ -1,6 +1,18 @@
 import sharp from "sharp";
 import { playerDisplayName } from "./telegram.js";
 
+const width = 1080;
+const margin = 48;
+const cardGap = 22;
+const cardPaddingX = 30;
+const cardPaddingY = 24;
+const lineHeight = 38;
+const titleHeight = 92;
+const footerHeight = 58;
+const maxImageHeight = 1900;
+const avatarSize = 64;
+const compactPlayerLimit = 12;
+
 const fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const emojiFontFamily = "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'";
 
@@ -9,93 +21,50 @@ function renderEmoji(text) {
   return text.replace(emojiRegex, `<tspan font-family="${emojiFontFamily}">$&</tspan>`);
 }
 
-const baseLayout = {
+const regularLayout = {
   columns: 1,
+  cardGap,
   columnGap: 0,
+  cardPaddingX,
+  cardPaddingY,
+  lineHeight,
+  avatarSize,
+  nameFontSize: 24,
+  clueFontSize: 28,
+  nameMaxChars: 40,
+  clueMaxChars: 50,
+  cardRadius: 20,
+  avatarTextSize: 26,
   minCardHeight: 0
 };
 
-const iphoneLayout = {
-  ...baseLayout,
-  width: 1080,
-  margin: 24,
-  titleHeight: 250,
-  footerHeight: 230,
-  imageHeight: 2332,
+const compactLayout = {
+  columns: 2,
   cardGap: 16,
-  cardPaddingX: 32,
-  cardPaddingY: 24,
-  lineHeight: 56,
-  avatarSize: 104,
-  avatarMarginRight: 24,
-  nameFontSize: 42,
-  clueFontSize: 48,
-  timeFontSize: 32,
-  nameMaxChars: 40,
-  clueMaxChars: 40,
-  cardRadius: 50,
-  avatarTextSize: 42,
-};
-
-const ipadMiniLayout = {
-  ...baseLayout,
-  width: 1536,
-  margin: 28,
-  titleHeight: 290,
-  footerHeight: 260,
-  imageHeight: 2048,
-  cardGap: 18,
-  cardPaddingX: 38,
-  cardPaddingY: 28,
-  lineHeight: 64,
-  avatarSize: 124,
-  avatarMarginRight: 28,
-  nameFontSize: 48,
-  clueFontSize: 56,
-  timeFontSize: 38,
-  nameMaxChars: 65,
-  clueMaxChars: 65,
-  cardRadius: 58,
-  avatarTextSize: 48,
-};
-
-const ipadProLayout = {
-  ...baseLayout,
-  width: 2048,
-  margin: 32,
-  titleHeight: 330,
-  footerHeight: 300,
-  imageHeight: 2732,
-  cardGap: 20,
-  cardPaddingX: 42,
-  cardPaddingY: 32,
-  lineHeight: 74,
-  avatarSize: 140,
-  avatarMarginRight: 32,
-  nameFontSize: 56,
-  clueFontSize: 64,
-  timeFontSize: 42,
-  nameMaxChars: 85,
-  clueMaxChars: 85,
-  cardRadius: 65,
-  avatarTextSize: 56,
+  columnGap: 18,
+  cardPaddingX: 20,
+  cardPaddingY: 18,
+  lineHeight: 30,
+  avatarSize: 48,
+  nameFontSize: 20,
+  clueFontSize: 22,
+  nameMaxChars: 24,
+  clueMaxChars: 31,
+  cardRadius: 16,
+  avatarTextSize: 20,
+  minCardHeight: 108
 };
 
 export async function renderCluesImages({ game, players, clueByUser, avatarsByUserId = new Map() }) {
-  let layout = iphoneLayout;
-  if (players.length > 6 && players.length <= 10) layout = ipadMiniLayout;
-  if (players.length > 10) layout = ipadProLayout;
+  const layout = players.length <= compactPlayerLimit ? compactLayout : regularLayout;
   const cards = players.map((player, index) => {
     const clue = clueByUser.get(player.userId) || "No clue submitted.";
     const nameLines = wrapText(playerDisplayName(player), layout.nameMaxChars);
     const clueLines = wrapText(clue, layout.clueMaxChars);
-    
-    const nameHeight = nameLines.length * (layout.nameFontSize * 1.2);
-    const contentGap = 6;
-    const clueHeight = (clueLines.length - 1) * layout.lineHeight + layout.clueFontSize;
-    const timeGap = 12;
-    const bubbleHeight = layout.cardPaddingY * 2 + nameHeight + contentGap + clueHeight + timeGap + layout.timeFontSize;
-    const height = Math.max(layout.avatarSize, bubbleHeight);
+    const height = Math.max(
+      layout.minCardHeight,
+      layout.cardPaddingY * 2 + nameLines.length * layout.lineHeight + 8 + clueLines.length * layout.lineHeight
+    );
 
     return {
       index,
@@ -103,8 +72,6 @@ export async function renderCluesImages({ game, players, clueByUser, avatarsByUs
       nameLines,
       clueLines,
       height,
-      nameHeight,
-      bubbleHeight,
       avatar: avatarsByUserId.get(player.userId) || null
     };
   });
@@ -127,38 +94,27 @@ export async function renderCluesImage(options) {
 }
 
 async function renderCluePage({ game, cards, pageNumber, totalPages, layout }) {
-  const { width, margin, titleHeight, footerHeight, imageHeight } = layout;
   const contentHeight = pageContentHeight(cards, layout);
-  const height = Math.max(imageHeight, margin + titleHeight + contentHeight + footerHeight + margin); // Dynamic height for scrolling screenshots
+  const height = margin + titleHeight + contentHeight + footerHeight + margin;
   const placements = [];
   const cardSvg = renderCards(cards, layout, margin + titleHeight, placements);
 
-  const scale = width / 1080;
-  const s = (val) => val * scale;
-
   const svg = `
 <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-  <rect width="${width}" height="${height}" fill="#000000"/>
-  
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#1A1C20"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#bg)"/>
+  <text x="${width / 2}" y="${margin + 42}" text-anchor="middle" font-family="${fontFamily}" font-size="42" font-weight="800" fill="#ffffff">Clues</text>
+  <text x="${width / 2}" y="${margin + 82}" text-anchor="middle" font-family="${fontFamily}" font-size="24" font-weight="500" fill="#9BA3AF">Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
   ${cardSvg}
-
-  <!-- Header -->
-  <rect x="0" y="0" width="${width}" height="${titleHeight}" fill="#1C1C1D"/>
-  <rect x="0" y="${titleHeight - 2}" width="${width}" height="2" fill="#2C2C2E"/>
-  <text x="${s(40)}" y="${titleHeight * 0.65}" font-family="${fontFamily}" font-size="${s(48)}" font-weight="400" fill="#0A84FF">‹ Chats</text>
-  <text x="${width / 2}" y="${titleHeight * 0.55}" text-anchor="middle" font-family="${fontFamily}" font-size="${s(46)}" font-weight="600" fill="#FFFFFF">Clues</text>
-  <text x="${width / 2}" y="${titleHeight * 0.85}" text-anchor="middle" font-family="${fontFamily}" font-size="${s(34)}" font-weight="400" fill="#8E8E93">Round ${escapeXml(String(game.roundNumber || 1))}${totalPages > 1 ? ` • Page ${pageNumber}/${totalPages}` : ""}</text>
-  <circle cx="${width - s(80)}" cy="${titleHeight * 0.6}" r="${s(45)}" fill="#30D158"/>
-  <text x="${width - s(80)}" y="${titleHeight * 0.6 + s(14)}" text-anchor="middle" font-family="${fontFamily}" font-size="${s(40)}" font-weight="600" fill="#FFFFFF">G</text>
-
-  <!-- Footer -->
-  <rect x="0" y="${height - footerHeight}" width="${width}" height="${footerHeight}" fill="#1C1C1D"/>
-  <rect x="0" y="${height - footerHeight}" width="${width}" height="2" fill="#2C2C2E"/>
-  <text x="${s(60)}" y="${height - footerHeight + footerHeight * 0.5 + s(20)}" font-family="${fontFamily}" font-size="${s(84)}" font-weight="300" fill="#8E8E93">+</text>
-  <text x="${width - s(100)}" y="${height - footerHeight + footerHeight * 0.5 + s(10)}" font-family="${emojiFontFamily}" font-size="${s(64)}" fill="#8E8E93">🎤</text>
-  <rect x="${s(130)}" y="${height - footerHeight + footerHeight * 0.15}" width="${width - s(270)}" height="${footerHeight * 0.5}" rx="${footerHeight * 0.25}" fill="#000000" stroke="#2C2C2E" stroke-width="2"/>
-  <text x="${s(170)}" y="${height - footerHeight + footerHeight * 0.15 + footerHeight * 0.35}" font-family="${fontFamily}" font-size="${s(42)}" font-weight="400" fill="#8E8E93">Message</text>
-  <rect x="${width / 2 - s(180)}" y="${height - s(24)}" width="${s(360)}" height="${s(10)}" rx="${s(5)}" fill="#FFFFFF"/>
+  <text x="${width / 2}" y="${height - margin}" text-anchor="middle" font-family="${fontFamily}" font-size="22" font-weight="600" fill="#6B7280">Vote for who you think is the impostor.</text>
 </svg>`;
 
   const overlays = [];
@@ -174,7 +130,6 @@ async function renderCluePage({ game, cards, pageNumber, totalPages, layout }) {
 }
 
 function renderCards(cards, layout, startY, placements) {
-  const { width, margin } = layout;
   if (layout.columns === 1) {
     let y = startY;
     return cards.map((card) => {
@@ -202,73 +157,52 @@ function renderCards(cards, layout, startY, placements) {
 }
 
 function renderCard(card, x, y, cardWidth, cardHeight, layout) {
-  const avatarX = x;
-  const bubbleX = x + layout.avatarSize + layout.avatarMarginRight;
-  const maxLineLength = Math.max(
-    ...card.clueLines.map(l => l.length),
-    ...card.nameLines.map(l => l.length * (layout.nameFontSize / layout.clueFontSize))
-  );
-  const estimatedTextWidth = maxLineLength * layout.clueFontSize * 0.55 + 100;
-  const maxBubbleWidth = cardWidth - (layout.avatarSize + layout.avatarMarginRight);
-  const bubbleWidth = Math.max(layout.cardPaddingX * 3, Math.min(estimatedTextWidth + layout.cardPaddingX * 2, maxBubbleWidth));
-  
-  const avatarY = y + card.height - layout.avatarSize;
-  const bubbleY = y + card.height - card.bubbleHeight;
-
-  const nameY = bubbleY + layout.cardPaddingY + layout.nameFontSize - 4;
-  const clueStartY = bubbleY + layout.cardPaddingY + card.nameHeight + 6 + layout.clueFontSize - 4;
-  
+  const avatarX = x + layout.cardPaddingX;
+  const textX = avatarX + layout.avatarSize + 16;
+  const nameY = y + layout.cardPaddingY + Math.round(layout.nameFontSize * 1.05);
+  const clueStartY = nameY + card.nameLines.length * layout.lineHeight + 8;
   const avatarColor = pickColor(card.index);
-  const nameColor = pickColorLight(card.index);
 
   const nameText = card.nameLines.map((line, index) => (
-    `<tspan x="${bubbleX + layout.cardPaddingX}" dy="${index === 0 ? 0 : layout.nameFontSize * 1.2}">${renderEmoji(escapeXml(line))}</tspan>`
+    `<tspan x="${textX}" dy="${index === 0 ? 0 : layout.lineHeight}">${renderEmoji(escapeXml(line))}</tspan>`
   )).join("");
 
   const clueText = card.clueLines.map((line, index) => (
-    `<tspan x="${bubbleX + layout.cardPaddingX}" dy="${index === 0 ? 0 : layout.lineHeight}">${renderEmoji(escapeXml(line))}</tspan>`
+    `<tspan x="${textX}" dy="${index === 0 ? 0 : layout.lineHeight}">${renderEmoji(escapeXml(line))}</tspan>`
   )).join("");
 
-  const r = layout.cardRadius;
-  const h = card.bubbleHeight;
-  const w = bubbleWidth;
-
-  const tailScale = r / 50;
-  const t = (val) => val * tailScale;
-
-  const tailPath = `
-    M ${bubbleX + r} ${bubbleY}
-    L ${bubbleX + w - r} ${bubbleY}
-    A ${r} ${r} 0 0 1 ${bubbleX + w} ${bubbleY + r}
-    L ${bubbleX + w} ${bubbleY + h - r}
-    A ${r} ${r} 0 0 1 ${bubbleX + w - r} ${bubbleY + h}
-    L ${bubbleX + t(26)} ${bubbleY + h}
-    C ${bubbleX + t(12)} ${bubbleY + h} ${bubbleX} ${bubbleY + h - t(2)} ${bubbleX - t(10)} ${bubbleY + h}
-    C ${bubbleX - t(4)} ${bubbleY + h - t(4)} ${bubbleX} ${bubbleY + h - t(12)} ${bubbleX} ${bubbleY + h - t(24)}
-    L ${bubbleX} ${bubbleY + r}
-    A ${r} ${r} 0 0 1 ${bubbleX + r} ${bubbleY}
-    Z
-  `;
-
-  const timeY = bubbleY + h - layout.cardPaddingY / 2;
-  const timeX = bubbleX + w - layout.cardPaddingX;
-
   return `
-  <g>
-    <circle cx="${avatarX + layout.avatarSize / 2}" cy="${avatarY + layout.avatarSize / 2}" r="${layout.avatarSize / 2}" fill="${avatarColor}"/>
-    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${avatarY + layout.avatarSize / 2 + layout.avatarTextSize * 0.35}" text-anchor="middle" font-family="${fontFamily}" font-size="${layout.avatarTextSize}" font-weight="700" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
-    
-    <path d="${tailPath}" fill="#262628"/>
-    
-    <text x="${bubbleX + layout.cardPaddingX}" y="${nameY}" font-family="${fontFamily}" font-size="${layout.nameFontSize}" font-weight="600" fill="${nameColor}">${nameText}</text>
-    <text x="${bubbleX + layout.cardPaddingX}" y="${clueStartY}" font-family="${fontFamily}" font-size="${layout.clueFontSize}" font-weight="400" fill="#ffffff">${clueText}</text>
-    <text x="${timeX}" y="${timeY}" text-anchor="end" font-family="${fontFamily}" font-size="${layout.timeFontSize}" font-weight="400" fill="#8E8E93">10:42</text>
+  <g filter="url(#shadow)">
+    <rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="${layout.cardRadius}" fill="#26282E"/>
+    <circle cx="${avatarX + layout.avatarSize / 2}" cy="${y + layout.cardPaddingY + layout.avatarSize / 2}" r="${layout.avatarSize / 2}" fill="${avatarColor}"/>
+    ${card.avatar ? "" : `<text x="${avatarX + layout.avatarSize / 2}" y="${y + layout.cardPaddingY + Math.round(layout.avatarSize * 0.68)}" text-anchor="middle" font-family="${fontFamily}" font-size="${layout.avatarTextSize}" font-weight="800" fill="#ffffff">${escapeXml(initials(playerDisplayName(card.player)))}</text>`}
+    <text x="${textX}" y="${nameY}" font-family="${fontFamily}" font-size="${layout.nameFontSize}" font-weight="700" fill="#E5E7EB">${nameText}</text>
+    <text x="${textX}" y="${clueStartY}" font-family="${fontFamily}" font-size="${layout.clueFontSize}" font-weight="400" fill="#D1D5DB">${clueText}</text>
   </g>`;
 }
 
 function paginateCards(cards, layout) {
-  // Never paginate: return all cards as a single page to create a scrolling screenshot
-  return [cards];
+  if (layout === compactLayout && cards.length <= compactPlayerLimit) return [cards];
+
+  const pages = [];
+  let current = [];
+  let currentHeight = 0;
+  const availableHeight = maxImageHeight - margin * 2 - titleHeight - footerHeight;
+
+  for (const card of cards) {
+    const nextHeight = currentHeight + card.height + (current.length > 0 ? layout.cardGap : 0);
+    if (current.length > 0 && nextHeight > availableHeight) {
+      pages.push(current);
+      current = [card];
+      currentHeight = card.height;
+    } else {
+      current.push(card);
+      currentHeight = nextHeight;
+    }
+  }
+
+  if (current.length > 0) pages.push(current);
+  return pages.length ? pages : [[]];
 }
 
 function pageContentHeight(cards, layout) {
@@ -281,11 +215,10 @@ function pageContentHeight(cards, layout) {
 }
 
 function avatarPlacement(card, cardX, cardY, layout) {
-  const avatarY = cardY + card.height - layout.avatarSize;
   return {
     avatar: card.avatar,
-    x: cardX,
-    y: avatarY,
+    x: cardX + layout.cardPaddingX,
+    y: cardY + layout.cardPaddingY,
     size: layout.avatarSize
   };
 }
@@ -348,7 +281,7 @@ function initials(name) {
 }
 
 function pickColor(index) {
-  const colors = ["#0A84FF", "#30D158", "#5E5CE6", "#FF9F0A", "#FF453A", "#FF375F", "#BF5AF2", "#32ADE6"];
+  const colors = ["#1976d2", "#00897b", "#7b1fa2", "#c2185b", "#5d4037", "#455a64", "#ef6c00", "#2e7d32"];
   return colors[index % colors.length];
 }
 
